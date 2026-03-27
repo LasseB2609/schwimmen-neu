@@ -26,4 +26,4 @@ class Card {
   }
 }
 
-export default Card; // Exportiere die Card-Klasse, damit sie in anderen Modulen verwendet werden kann
+module.exports = Card;

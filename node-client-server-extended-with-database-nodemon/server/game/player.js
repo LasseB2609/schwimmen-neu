@@ -7,7 +7,7 @@ class Player {
     }   
 
     //fügt eine Karte der Hand des Spielers hinzu
-    addCard() {
+    addCard(card) {
         this.hand.push(card);
     }
 
@@ -27,4 +27,4 @@ class Player {
         this.hand = [];
     }
 }  
-export default Player; // Exportiere die Player-Klasse, damit sie in anderen Modulen verwendet werden kann
+module.exports = Player; 
