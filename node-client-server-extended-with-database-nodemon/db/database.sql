@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS Card (
     card_id INT AUTO_INCREMENT PRIMARY KEY,
     suit VARCHAR(20) NOT NULL,      -- 'Herz', 'Karo', 'Kreuz', 'Pik'
     rank VARCHAR(5) NOT NULL,       -- '6', '7', '8', '9', '10', 'B', 'D', 'K', 'A'
-    value INT NOT NULL              -- Kartenwert: 6-14
+    value INT NOT NULL              -- Kartenwert: 7-11
 );
 
 -- ============================================
