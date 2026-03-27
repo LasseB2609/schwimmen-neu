@@ -13,6 +13,7 @@ function dbQuery(connection, sql, params) { //connection für die DB-Verbindung,
     });
 }
 
+//Methode, um ein neues Spiel zu erstellen,...
 async function createGame(connection, player_ids) {
 
     //speichert das Game in die Datenbank und gibt die Game-Instanz zurück
@@ -71,10 +72,75 @@ async function createGame(connection, player_ids) {
     return game;
 }
 
+//Methode, um den aktuellen GameState in der Datenbank zu speichern
+async function saveGame(connection, game) {
+    //Spielstatus wird in der Datenbank-Tabelle Game aktualisiert
+    const currentPlayer = game.players[game.currentPlayerIndex] || null; //holt den aktuellen Spieler basierend auf currentPlayerIndex, falls es keinen gibt  wird null übergeben
+    //evtl TODO = ergebnisse mit try/catch abfangen
+    await dbQuery(
+        connection,
+        'UPDATE Game SET status = ?, round_number = ?, current_player_id = ? WHERE game_id = ?',
+        [
+            'playing',
+            game.currentRound || 1, //wenn game.currentRound existiert, übergib es, ansonsten 1 (weil es ja mindestens die erste Runde sein muss)
+            currentPlayer ? currentPlayer.player_id : null, //wenn currentPlayer existiert, übergib dessen player_id, ansonsten null
+            game.game_id
+        ]
+    );
 
-async function saveGame() {
+    //Spielerstatus (mit Leben, Score und Aktivitätsstatus) wird in der Datenbank-Tabelle Game_Player aktualisiert
+    for (const player of game.players) {
+        await dbQuery(
+            connection,
+            'UPDATE Game_Player SET lives = ?, score = ?, is_active = ? WHERE game_id = ? AND player_id = ?',
+            [player.lives, player.score || 0, false, game.game_id, player.player_id]
+        );
+    }
 
+    //löscht alle aktuellen GameCard Einträge für dieses Spiel, damit sie anschließend mit den aktuellen Karten neu eingefügt werden können
+    await dbQuery(
+        connection,
+        'DELETE FROM Game_Card WHERE game_id = ?',
+        [game.game_id]
+    );
+
+    //speichert die aktuellen Karten des Nachziehstapels in der Datenbank-Tabelle Game_Card
+    let deckPos = 0;
+    for (const card of game.deck.cards) { //iteriert durch die Karten des Nachziehstapels und speichert sie in der DB
+        await dbQuery(
+            connection,
+            'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
+            [game.game_id, card.card_id, 'deck', null, deckPos++]
+        );
+    }
+
+    //speichert die aktuellen Karten der Spielerhände in der Datenbank-Tabelle Game_Card
+    for (const player of game.players) {
+        let handPos = 0;
+        for (const card of player.hand) { //iteriert durch die Handkarten jedes Spielers und speichert sie in der DB
+            await dbQuery(
+                connection,
+                'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
+                [game.game_id, card.card_id, 'hand', player.player_id, handPos++]
+            );
+        }
+    }
+
+    //speichert die aktuellen Tischkarten in der Datenbank-Tabelle Game_Card
+    const tableCards = game.tableCards || [];
+    let tablePos = 0;
+    for (const card of tableCards) { //iteriert durch die Tischkarten und speichert sie in der DB
+        if (!card) continue;
+        await dbQuery(
+            connection,
+            'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
+            [game.game_id, card.card_id, 'table', null, tablePos++]
+        );
+    }
+
+    return true;
 }
+
 
 function loadGame() {
 }

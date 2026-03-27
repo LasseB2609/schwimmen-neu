@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS Game_Card (
     card_id INT NOT NULL,
     location VARCHAR(50) NOT NULL,  -- 'deck', 'hand', 'table', 'discard'
     owner_player_id INT,            -- NULL wenn im Deck/Discard
-    position INT DEFAULT 0          -- Position der Karte
+    position INT DEFAULT 0          -- Position der Karte, um Reihenfolge zu haben
 );
 
 -- ============================================
