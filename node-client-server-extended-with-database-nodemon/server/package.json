@@ -1,0 +1,16 @@
+{
+  "name": "docker_web_app_server",
+  "version": "1.0.0",
+  "description": "Node.js on Docker",
+  "author": "First Last <first.last@example.com>",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.2",
+    "express-rate-limit": "^8.3.1",
+    "mysql": "^2.18"
+  }
+}
