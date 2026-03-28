@@ -1,3 +1,5 @@
+//in dieser Datei kommen die Nachrichten der Clients an. Server ruft dannn die Spiellogik (Aus der Datei game-server.js) auf und speichert in der Datenbank
+
 'use strict';
 
 const express = require('express');
@@ -91,6 +93,24 @@ function getGameState(game) {
     };
 }
 
+//lädt ein Spiel aus activeGames oder bei Bedarf aus der Datenbank
+async function getOrLoadGame(roomId) {
+    //zunächst wird versucht das Spiel aus activeGames zu holen
+    let game = activeGames.get(roomId);
+    if (game) {
+        return game; //gibt das Spiel zurück
+    }
+
+    //falls das Spiel nicht in activeGames gefunden wird, wird versucht es aus der Datenbank zu laden
+    const gameId = Number.parseInt(roomId, 10);
+    game = await gameState.loadGame(connection, gameId);
+    if (game) {
+        activeGames.set(roomId, game); //speichert das geladene Spiel in activeGames, damit es beim nächsten Mal direkt verfügbar ist
+    }
+
+    return game; //gibt das Spiel zurück
+}
+
 //wenn sich ein Client mit Socket.io verbindet, wird folgende Funktion ausgeführt
 io.on('connection', (socket) => {
     console.log('Socket connected:', socket.id); //Konsolenausgabe der Socket-ID des verbundenen Clients
@@ -124,9 +144,9 @@ io.on('connection', (socket) => {
     });
 
     //wenn der Client eine "join-game" Nachricht sendet, wird folgende Funktion ausgeführt
-    socket.on('join-game', (data) => {
+    socket.on('join-game', async (data) => {
         const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
-        const game = activeGames.get(roomId); //holt das Spiel aus der activeGames Map, damit der Client dem entsprechenden Spiel beitreten kann
+        const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
 
         
         if (!game) { //wird ausgeführt falls das Spiel nicht existiert/nicht gefunden wurde
@@ -136,6 +156,42 @@ io.on('connection', (socket) => {
 
         socket.join(roomId); //lässt den Client dem Socket.io Raum beitreten
         socket.emit('game-state', getGameState(game)); //sendet den aktuellen Gamestate an den Client
+    });
+
+    //wenn der Client eine "swap-card" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('swap-card', async (data) => {
+        try {
+            //holt die benötigten Werte aus den übergebenen Daten
+            const roomId = String(data?.gameId || '');
+            const playerId = Number.parseInt(data?.playerId, 10);
+            const handCardId = Number.parseInt(data?.handCardId, 10);
+            const tableCardIndex = Number.parseInt(data?.tableCardIndex, 10);
+
+            //validiert, dass alle benötigten Werte gesetzt sind
+            if (!roomId || !Number.isInteger(playerId) || !Number.isInteger(handCardId) || !Number.isInteger(tableCardIndex)) {
+                socket.emit('game-error', { message: 'Ungültige Daten für swap-card.' });
+                return;
+            }
+
+            const game = await getOrLoadGame(roomId);
+            //überprüfen, ob das Spiel existiert
+            if (!game) {
+                socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                return;
+            }
+
+            //führt die Spiellogik aus (tauscht Handkarte gegen Tischkarte)
+            game.swapCard(playerId, handCardId, tableCardIndex);
+
+            //speichert den aktualisierten Spielzustand in der Datenbank
+            await gameState.saveGame(connection, game);
+
+            //sendet den aktualisierten Spielstatus an alle Clients im Spielraum
+            io.to(roomId).emit('game-state', getGameState(game));
+        } catch (error) {
+            console.error('swap-card failed:', error);
+            socket.emit('game-error', { message: error.message });
+        }
     });
 
     //wenn der Client sich trennt, wird dies in der Konsole ausgegeben

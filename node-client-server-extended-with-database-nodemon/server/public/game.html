@@ -45,6 +45,31 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Karte tauschen (Test)</h2>
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label for="playGameId">Game ID</label>
+                        <input id="playGameId" class="form-control" type="number" placeholder="z. B. 1">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="playPlayerId">Player ID</label>
+                        <input id="playPlayerId" class="form-control" type="number" placeholder="z. B. 1">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="playHandCardId">Hand Card ID</label>
+                        <input id="playHandCardId" class="form-control" type="number" placeholder="z. B. 24">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="playTableCardIndex">Table Index (0-2)</label>
+                        <input id="playTableCardIndex" class="form-control" type="number" min="0" max="2" value="0">
+                    </div>
+                </div>
+                <button id="swapCardButton" class="btn btn-success" type="button">Swap Card</button>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-lg-6 mb-4">
                 <div class="card h-100">
@@ -66,6 +91,6 @@
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="game.js"></script>
+    <script src="game-client.js"></script>
 </body>
 </html>

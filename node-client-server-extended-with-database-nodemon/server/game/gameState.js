@@ -2,7 +2,7 @@
 const Deck = require('./deck');
 const Card = require('./card');
 const Player = require('./player');
-const Game = require('./game');
+const Game = require('./game-server');
 
 //Hilfsfunktion, um Datenbankabfragen mit Promises(=für asynchronität) abzuschicken
 function dbQuery(connection, sql, params) { //connection für die DB-Verbindung, sql für den SQL-Befehl, params für "?" Platzhalter im SQL-Befehl
