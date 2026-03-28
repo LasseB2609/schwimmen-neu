@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schwimmen Socket Test</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body>
+    <main class="container py-4">
+        <h1 class="mb-4">Schwimmen Socket Test</h1>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Spiel erstellen</h2>
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="player1">Player 1 ID</label>
+                        <input id="player1" class="form-control" type="number" value="1">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="player2">Player 2 ID</label>
+                        <input id="player2" class="form-control" type="number" value="2">
+                    </div>
+                    <div class="form-group col-md-4 d-flex align-items-end">
+                        <button id="createGameButton" class="btn btn-primary btn-block" type="button">Create Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Spiel beitreten</h2>
+                <div class="form-row">
+                    <div class="form-group col-md-8">
+                        <label for="joinGameId">Game ID</label>
+                        <input id="joinGameId" class="form-control" type="number" placeholder="z. B. 1">
+                    </div>
+                    <div class="form-group col-md-4 d-flex align-items-end">
+                        <button id="joinGameButton" class="btn btn-outline-primary btn-block" type="button">Join Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5">Status</h2>
+                        <pre id="statusOutput" class="mb-0">Noch keine Verbindungsausgabe.</pre>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5">Game State</h2>
+                        <pre id="stateOutput" class="mb-0">Noch kein Spielstatus empfangen.</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

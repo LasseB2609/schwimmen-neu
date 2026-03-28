@@ -42,6 +42,7 @@ const HOST = '0.0.0.0';
 const app = express();
 const server = http.createServer(app); // aus der Express App wird ein HTTP Server erstellt, damit Socket.IO damit arbeiten kann
 const io = new Server(server); // erstellt eine neue Socket.IO-Instanz und bindet sie an den HTTP-Server
+const activeGames = new Map(); //wird verwendet, um die aktiven Spiele speichern zu können
 // Features for JSON Body
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
