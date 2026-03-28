@@ -98,6 +98,7 @@ async function getOrLoadGame(roomId) {
     //zunächst wird versucht das Spiel aus activeGames zu holen
     let game = activeGames.get(roomId);
     if (game) {
+        console.log("INFO: DAS SPIEL WIRD AUS ACTIVE GAMES GEHOLT (RAM)");
         return game; //gibt das Spiel zurück
     }
 
@@ -105,6 +106,7 @@ async function getOrLoadGame(roomId) {
     const gameId = Number.parseInt(roomId, 10);
     game = await gameState.loadGame(connection, gameId);
     if (game) {
+        console.log("INFO: DAS SPIEL WIRD AUS DER DATENBANK GELADEN");
         activeGames.set(roomId, game); //speichert das geladene Spiel in activeGames, damit es beim nächsten Mal direkt verfügbar ist
     }
 
