@@ -1,7 +1,8 @@
-import Player from "./player.js";
-import Deck from "./deck.js";
-import Card from "./card.js";
-import Game from "./game.js";
+//Imports
+const Deck = require('./deck');
+const Card = require('./card');
+const Player = require('./player');
+const Game = require('./game');
 
 //Hilfsfunktion, um Datenbankabfragen mit Promises(=für asynchronität) abzuschicken
 function dbQuery(connection, sql, params) { //connection für die DB-Verbindung, sql für den SQL-Befehl, params für "?" Platzhalter im SQL-Befehl
@@ -46,7 +47,7 @@ async function createGame(connection, player_ids) {
         await dbQuery(
             connection,
             'INSERT INTO Game_Player (game_id, player_id, is_active, lives, score) VALUES (?, ?, ?, ?, ?)',
-            [gameId, player.player_id, false, 3, 0]
+            [gameId, player.player_id, true, 3, 0]
         );
     }
 
@@ -93,7 +94,7 @@ async function saveGame(connection, game) {
         await dbQuery(
             connection,
             'UPDATE Game_Player SET lives = ?, score = ?, is_active = ? WHERE game_id = ? AND player_id = ?',
-            [player.lives, player.score || 0, false, game.game_id, player.player_id]
+            [player.lives, player.score || 0, true, game.game_id, player.player_id]
         );
     }
 
@@ -138,9 +139,16 @@ async function saveGame(connection, game) {
         );
     }
 
-    return true;
+    return true; //erfolgreich gespeichert
 }
 
 
 function loadGame() {
+    //todo: loadGame für mögliche Server-Crashes implementieren
 }
+
+module.exports = {
+    createGame,
+    saveGame,
+    loadGame
+};

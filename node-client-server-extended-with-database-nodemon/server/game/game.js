@@ -1,8 +1,9 @@
 class Game {
     constructor(game_id, players, deck) {
         this.game_id = game_id;
-        this.players = players; // Array von Player-Objekten
+        this.players = players; // Array von Spielern
         this.deck = deck;       // Deck-Objekt
+        this.tableCards = [];   // Array für die Tischkarten
         this.currentRound = 0;
         this.currentPlayerIndex = 0;
     }

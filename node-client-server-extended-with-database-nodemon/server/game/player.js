@@ -2,8 +2,9 @@ class Player {
     constructor(player_id, username) {
         this.player_id = player_id; // ID des Spielers
         this.username = username;   // Name des Spielers
-        this.hand = [];             // Handkarten des Spielers (Array von Card-Objekten)
+        this.hand = [];             // Handkarten des Spielers
         this.lives = 3;              // Anzahl der Leben des Spielers
+        this.score = 0;
     }   
 
     //fügt eine Karte der Hand des Spielers hinzu

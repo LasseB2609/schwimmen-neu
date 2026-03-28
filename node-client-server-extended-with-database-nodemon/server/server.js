@@ -1,13 +1,16 @@
 'use strict';
 
 const express = require('express');
+const http = require('http');
 const rateLimit = require('express-rate-limit');
+const { Server } = require('socket.io'); //nimmt die Server-Klasse aus dem Socket.IO Modul
+const gameState = require('./game/gameState'); //für Funktionen wie createGame, saveGame, loadGame
 
 // Database
 const mysql = require('mysql');
 // Database connection info - used from environment variables
 var dbInfo = {
-    connectionLimit : 10,
+    connectionLimit: 10,
     host: process.env.MYSQL_HOSTNAME,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
@@ -16,20 +19,7 @@ var dbInfo = {
 
 var connection = mysql.createPool(dbInfo);
 console.log("Conecting to database...");
-// connection.connect(); <- connect not required in connection pool
 
-// SQL Database init.
-// In this current demo, this is done by the "database.sql" file which is stored in the "db"-container (./db/).
-// Alternative you could use the mariadb basic sample and do the following steps here:
-/*
-connection.query("CREATE TABLE IF NOT EXISTS table1 (task_id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)  ENGINE=INNODB;", function (error, results, fields) {
-    if (error) throw error;
-    console.log('Answer: ', results);
-});
-*/
-// See readme.md for more information about that.
-
-// Check the connection
 connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
     if (error) throw error; // <- this will throw the error and exit normally
     // check the solution - should be 2
@@ -50,7 +40,8 @@ const HOST = '0.0.0.0';
 
 // App
 const app = express();
-
+const server = http.createServer(app); // aus der Express App wird ein HTTP Server erstellt, damit Socket.IO damit arbeiten kann
+const io = new Server(server); // erstellt eine neue Socket.IO-Instanz und bindet sie an den HTTP-Server
 // Features for JSON Body
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -74,143 +65,89 @@ app.get('/', (req, res) => {
     res.redirect('/static');
 });
 
-// Another GET Path - call it with: http://localhost:8080/special_path
-app.get('/special_path', (req, res) => {
-    res.send('This is another path');
+//evtl. einfach entfernen
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
 });
 
-// Another GET Path that shows the actual Request (req) Headers - call it with: http://localhost:8080/request_info
-app.get('/request_info', (req, res) => {
-    console.log("Request content:", req)
-    res.send('This is all I got from the request:' + JSON.stringify(req.headers));
-});
+// statische Dateien werden aus dem Public Ordner bereitgestellt
+app.use('/static', express.static('public'));
 
-// POST Path - call it with: POST http://localhost:8080/client_post
-app.post('/client_post', (req, res) => {
-    if (typeof req.body !== "undefined" && typeof req.body.post_content !== "undefined") {
-        var post_content = req.body.post_content;
-        console.log("Client send 'post_content' with content:", post_content)
-        // Set HTTP Status -> 200 is okay -> and send message
-        res.status(200).json({ message: 'I got your message: ' + post_content });
-    }
-    else {
-        // There is no body and post_contend
-        console.error("Client send no 'post_content'")
-        // Set HTTP Status -> 400 is client error -> and send message
-        res.status(400).json({ message: 'This function requries a body with "post_content"' });
-    }
-});
+//Funktion, um den aktuellen Spielstatus zurückzugeben, damit er später an die Clients gesendet werden kann 
+function getGameState(game) {
+    return {
+        gameId: game.game_id,
+        currentRound: game.currentRound,
+        currentPlayerIndex: game.currentPlayerIndex,
+        players: game.players.map((player) => ({
+            player_id: player.player_id,
+            username: player.username,
+            lives: player.lives,
+            score: player.score,
+            hand: player.hand
+        })),
+        tableCards: game.tableCards
+    };
+}
 
-// ###################### BUTTON EXAMPLE ######################
-// POST path for Button 1
-app.post('/button1_name', (req, res) => {
-    // Load the name from the formular. This is the ID of the input:
-    const name = req.body.name
-    // Print it out in console:
-    console.log("Client send the following name: " + name + " | Button1")
-    // Send JSON message back - this could be also HTML instead.
-    res.status(200).json({ message: 'I got your message - Name is: ' + name });
-    // More information here: https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/forms
-})
+//wenn sich ein Client mit Socket.io verbindet, wird folgende Funktion ausgeführt
+io.on('connection', (socket) => {
+    console.log('Socket connected:', socket.id); //Konsolenausgabe der Socket-ID des verbundenen Clients
 
-// GET path for Button 2
-app.get('/button2', (req, res) => {
-    // This will generate a random number and send it back:
-    const random_number = Math.random();
-    // Print it out in console:
-    console.log("Send the following random number to the client: " + random_number + " | Button2")
-    // Send it to the client / webbrowser:
-    res.send("Antwort: " + random_number);
-    // Instead of plain TXT - the answer could be a JSON
-    // More information here: https://www.w3schools.com/xml/ajax_intro.asp
-});
-// ###################### BUTTON EXAMPLE END ######################
+    //Wenn der Client eine "create-game" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('create-game', async (data) => {
+        try {
+            //data könnte entweder ein Array von playerIds sein oder ein Objekt mit einem playerIds-Array
+            //todo: überlegen, was wirklich übergeben wird und nicht benötigtes entfernen
+            const playerIds = Array.isArray(data)
+                ? data // Wenn data direkt ein Array ist, verwenden wir es
+                : Array.isArray(data?.playerIds) // Wenn data ein Objekt mit einem playerIds-Array ist, verwenden wir dieses Array
+                    ? data.playerIds
+                    : []; // Wenn keines der beiden Fälle zutrifft, verwenden wir ein leeres Array
 
+            const game = await gameState.createGame(connection, playerIds); //erstellt ein neues Spiel mit der Datenbankverbindung und den übergebenen Spieler-IDs
+            const roomId = String(game.game_id); //speichert die game_id als roomId ab
+            activeGames.set(roomId, game); //speichert das Spiel in der activeGames Map, damit es später abgerufen werden kann (z.B. wenn ein Spieler beitritt oder der Spielstatus aktualisiert werden muss)
 
-// ###################### DATABASE PART ######################
-// GET path for database
-app.get('/database', (req, res) => {
-    console.log("Request to load all entries from table1");
-    // Prepare the get query
-    connection.query("SELECT * FROM `table1`;", function (error, results, fields) {
-        if (error) {
-            console.error(error);
-            res.status(500).json({ message: "Database query failed" });
-        } else {
-            // we got no error - send it to the client
-            console.log('Success answer from DB: ', results); // <- log results in console
-            // INFO: Here could be some code to modify the result
-            res.status(200).json(results); // <- send it to client
+            socket.join(roomId); //erstellt einen socket.io Raum mit der roomID, damit darüber mit allen Clients kommuniziert werden kann
+
+            socket.emit('game-created', { //sendet Nachricht an den Client, dass das Spiel(mit der game_id) erstellt wurde
+                gameId: game.game_id
+            });
+
+            io.to(roomId).emit('game-state', getGameState(game)); //sendet an den Raum (mit den Clients) den aktuellen Gamestate
+        } catch (error) {
+            console.error('create-game failed:', error);
+            socket.emit('game-error', { message: error.message });
         }
     });
-});
 
-// DELETE path for database
-app.delete('/database/:id', (req, res) => {
-    // This path will delete an entry. For example the path would look like DELETE '/database/5' -> This will delete number 5
-    let id = Number.parseInt(req.params.id, 10); // <- load and validate the ID from the path
-    if (!Number.isInteger(id)) {
-        return res.status(400).json({ message: "Invalid id" });
-    }
-    console.log("Request to delete Item: " + id); // <- log for debugging
+    //wenn der Client eine "join-game" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('join-game', (data) => {
+        const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
+        const game = activeGames.get(roomId); //holt das Spiel aus der activeGames Map, damit der Client dem entsprechenden Spiel beitreten kann
 
-    // Use a parameterized query to prevent SQL injection.
-    connection.query("DELETE FROM `table1` WHERE `table1`.`task_id` = ?;", [id], function (error, results, fields) {
-        if (error) {
-            console.error(error);
-            res.status(500).json({ message: "Delete failed" });
-        } else {
-            // Everything is fine with the query
-            console.log('Success answer: ', results); // <- log results in console
-            res.status(200).json({ message: "Deleted" });
+        
+        if (!game) { //wird ausgeführt falls das Spiel nicht existiert/nicht gefunden wurde
+            socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+            return;
         }
+
+        socket.join(roomId); //lässt den Client dem Socket.io Raum beitreten
+        socket.emit('game-state', getGameState(game)); //sendet den aktuellen Gamestate an den Client
+    });
+
+    //wenn der Client sich trennt, wird dies in der Konsole ausgegeben
+    //todo: evtl spieler aus dem Spiel entfernen oder ähnliches
+    socket.on('disconnect', () => {
+        console.log('Socket disconnected:', socket.id);
     });
 });
-
-// POST path for database
-app.post('/database', (req, res) => {
-    // This will add a new row. So we're getting a JSON from the webbrowser which needs to be checked for correctness and later
-    // it will be added to the database with a query.
-    if (typeof req.body !== "undefined" && typeof req.body.title !== "undefined" && typeof req.body.description !== "undefined") {
-        // The content looks good, so move on
-        // Get the content to local variables:
-        var title = req.body.title;
-        var description = req.body.description;
-        console.log("Client send database insert request with 'title': " + title + " ; description: " + description); // <- log to server
-        // Use placeholders to avoid SQL injection.
-        connection.query(
-            "INSERT INTO `table1` (`task_id`, `title`, `description`, `created_at`) VALUES (NULL, ?, ?, current_timestamp());",
-            [title, description],
-            function (error, results, fields) {
-            if (error) {
-                console.error(error);
-                res.status(500).json({ message: "Insert failed" });
-            } else {
-                // Everything is fine with the query
-                console.log('Success answer: ', results); // <- log results in console
-                res.status(200).json({ message: "Inserted" });
-            }
-        });
-    }
-    else {
-        // There is nobody with a title nor description
-        console.error("Client send no correct data!")
-        // Set HTTP Status -> 400 is client error -> and send message
-        res.status(400).json({ message: 'This function requries a body with "title" and "description' });
-    }
-});
-// ###################### DATABASE PART END ######################
-
-
-
-
-// All requests to /static/... will be redirected to static files in the folder "public"
-// call it with: http://localhost:8080/static
-app.use('/static', express.static('public'))
 
 // Start the actual server
-app.listen(PORT, HOST);
-console.log(`Running on http://${HOST}:${PORT}`);
+server.listen(PORT, HOST, () => {
+    console.log(`Running on http://${HOST}:${PORT}`);
+});
 
 // Start database connection
 const sleep = (milliseconds) => {
