@@ -51,7 +51,7 @@ class Game {
         return this.players[this.currentPlayerIndex] || null;
     }
 
-    //Methode, um den Spielerindex anhand der player_id zu finden
+    //Methode, um den Spielerindex anhand der player_id zu finden 
     getPlayerIndexById(player_id) {
         return this.players.findIndex((player) => player.player_id === player_id);
     }
