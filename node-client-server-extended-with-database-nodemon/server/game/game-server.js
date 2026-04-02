@@ -79,7 +79,7 @@ class Game {
         }
 
         //überprüfen, ob an dem angegebenen Tischkartenindex tatsächlich eine Karte liegt
-        //ist das hier überhaupt nötig?
+        //todo: ist das hier überhaupt nötig?
         if (!this.tableCards[tableCardIndex]) {
             throw new Error('An dieser Tischposition liegt keine Karte.');
         }
@@ -109,6 +109,51 @@ class Game {
             tableCardIndex
         };
     }
+
+    //new
+    //Methode, um alle Handkarten mit den Tischkarten zu tauschen 
+    swapAllCards(player_id) {
+        const playerIndex = this.getPlayerIndexById(player_id);
+        const player = this.players[playerIndex];
+        //überprüfen, ob der Spieler im Spiel ist
+        if (playerIndex === -1) {
+            throw new Error('Spieler nicht im Spiel gefunden.');
+        }
+
+        //überprüfen, ob der Spieler an der Reihe ist
+        if (this.currentPlayerIndex !== playerIndex) {
+            throw new Error('Du bist aktuell nicht am Zug.');
+        }
+
+        //überprüfen, ob 3 Tischkarten liegen
+        //todo: überhaupt nötig?
+        if (this.tableCards.length !== 3) {
+            throw new Error('Es müssen 3 Karten auf dem Tisch liegen, um alle Karten zu tauschen.');
+        }
+
+        //überprüfen, ob der Spieler tatsächlich 3 Karten auf der Hand hat
+        //todo: überhaupt nötig?
+        if (player.hand.length !== 3) {
+            throw new Error('Der Spieler muss 3 Karten auf der Hand haben, um alle Karten zu tauschen.');
+        }
+
+        //iteriert durch die Handkarten des Spielers und tauscht sie jeweils mit einer Tischkarte aus
+        for(let i = 0; i < player.hand.length; i++) {
+            const handCard = player.hand[i];
+            const tableCard = this.tableCards[i];
+
+            player.hand[i] = tableCard;
+            this.tableCards[i] = handCard;
+        }
+    }
+
+    //MEthode, um zu klopfen, d.h. dass das SPiel nur noch eine Runde geht
+    //hierzu muss zunächst 1 Runde bereits gespielt worden sein
+    knock(player_id) {
+        const playerIndex = this.getPlayerIndexById(player_id);
+
+        
+    } 
 
     //Methode, um zu überprüfen, ob das Spiel vorbei ist, indem die Leben der Spieler überprüft werden
     checkIfGameOver() {

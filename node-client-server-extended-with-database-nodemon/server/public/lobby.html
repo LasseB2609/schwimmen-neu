@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schwimmen Lobby</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body>
+    <main class="container py-4">
+        <h1 class="mb-4">Schwimmen Lobby (ohne Login)</h1>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="playerIdInput">Player ID</label>
+                        <input id="playerIdInput" class="form-control" type="number" value="1">
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="lobbyNameInput">Lobby Name</label>
+                        <input id="lobbyNameInput" class="form-control" type="text" placeholder="z. B. Meine Lobby">
+                    </div>
+                    <div class="form-group col-md-3 d-flex align-items-end">
+                        <button id="createLobbyButton" class="btn btn-primary btn-block" type="button">Lobby erstellen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="joinLobbyIdInput">Lobby ID</label>
+                        <input id="joinLobbyIdInput" class="form-control" type="number" placeholder="z. B. 1">
+                    </div>
+                    <div class="form-group col-md-4 d-flex align-items-end">
+                        <button id="joinLobbyButton" class="btn btn-outline-primary btn-block" type="button">Lobby beitreten</button>
+                    </div>
+                    <div class="form-group col-md-4 d-flex align-items-end">
+                        <button id="refreshLobbiesButton" class="btn btn-outline-secondary btn-block" type="button">Lobby-Liste aktualisieren</button>
+                    </div>
+                </div>
+
+                <h2 class="h5">Offene Lobbys</h2>
+                <ul id="lobbyList" class="list-group"></ul>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Aktuelle Lobby</h2>
+                <pre id="currentLobbyOutput" class="mb-3">Noch keiner Lobby beigetreten.</pre>
+                <div class="d-flex flex-wrap gap-2">
+                    <button id="startGameButton" class="btn btn-success mr-2" type="button">Spiel starten (Host)</button>
+                    <button id="leaveLobbyButton" class="btn btn-outline-danger" type="button">Lobby verlassen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Status</h2>
+                <pre id="statusOutput" class="mb-0">Noch keine Verbindungsausgabe.</pre>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="lobby-client.js"></script>
+</body>
+</html>

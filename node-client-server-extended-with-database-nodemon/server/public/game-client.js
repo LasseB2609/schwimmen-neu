@@ -1,4 +1,5 @@
-//in dieser Datei schickt der Client events an den Server und empfängt die Antworten
+//in dieser Datei schickt der Client events an den Server und empfängt die Antworten 
+//für die Spiel-Funktionalität (Spiel erstellen, beitreten, Karte tauschen, etc.)
 
 //stellt die Verbindung zum Socket.IO Server her
 const socket = io();
@@ -9,13 +10,26 @@ const joinGameButton = document.getElementById('joinGameButton');
 const player1Input = document.getElementById('player1');
 const player2Input = document.getElementById('player2');
 const joinGameIdInput = document.getElementById('joinGameId');
-const playCardButton = document.getElementById('playCardButton');
+const swapCardButton = document.getElementById('swapCardButton');
 const playGameIdInput = document.getElementById('playGameId');
 const playPlayerIdInput = document.getElementById('playPlayerId');
 const playHandCardIdInput = document.getElementById('playHandCardId');
 const playTableCardIndexInput = document.getElementById('playTableCardIndex');
 const statusOutput = document.getElementById('statusOutput');
 const stateOutput = document.getElementById('stateOutput');
+
+const pageParams = new URLSearchParams(window.location.search); //holt die Parameter aus der URL
+const queryGameId = Number.parseInt(pageParams.get('gameId'), 10); //holt die gameId aus der URL
+const queryPlayerId = Number.parseInt(pageParams.get('playerId'), 10); //holt die playerId aus der URL
+
+//wenn gameId oder playerId als Query-Parameter übergeben wurden, werden diese direkt in die entsprechenden Input-Felder eingetragen
+if (Number.isInteger(queryGameId)) {
+    joinGameIdInput.value = queryGameId;
+    playGameIdInput.value = queryGameId;
+}
+if (Number.isInteger(queryPlayerId)) {
+    playPlayerIdInput.value = queryPlayerId;
+}
 
 //gibt den Status aus (zum debuggen)
 function setStatus(message, payload) {
@@ -64,6 +78,11 @@ swapCardButton.addEventListener('click', () => {
 //TODO: zukünftig nicht für Status verwenden, sondern um Spielupdates durchzufürhren etc.
 socket.on('connect', () => {
     setStatus('Socket verbunden.', { socketId: socket.id });
+
+    //wenn gameId über Query-Parameter übergeben wurde, direkt dem Spiel beitreten
+    if (Number.isInteger(queryGameId)) {
+        socket.emit('join-game', { gameId: queryGameId });
+    }
 });
 
 //Client merkt, wenn die Verbindung zum Socket.IO Server getrennt wurde, und gibt dies als Status aus
