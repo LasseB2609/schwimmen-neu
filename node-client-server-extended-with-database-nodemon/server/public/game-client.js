@@ -11,6 +11,8 @@ const player1Input = document.getElementById('player1');
 const player2Input = document.getElementById('player2');
 const joinGameIdInput = document.getElementById('joinGameId');
 const swapCardButton = document.getElementById('swapCardButton');
+const knockButton = document.getElementById('knockButton');
+const passButton = document.getElementById('passButton');
 const playGameIdInput = document.getElementById('playGameId');
 const playPlayerIdInput = document.getElementById('playPlayerId');
 const playHandCardIdInput = document.getElementById('playHandCardId');
@@ -73,6 +75,26 @@ swapCardButton.addEventListener('click', () => {
     socket.emit('swap-card', payload);
 });
 
+//bei buttonclick wird mit knock signalisiert, dass in dieser Runde jeder weiterer Spieler nur noch einen Zug machen darf
+knockButton.addEventListener('click', () => {
+    const gameId = Number.parseInt(playGameIdInput.value, 10); //holt die gameId aus dem Input-Feld
+    const playerId = Number.parseInt(playPlayerIdInput.value, 10); //holt die playerId aus dem Input-Feld
+
+    const payload = { gameId, playerId }; //speichert die gameId und playerId
+    setStatus('Sende knock ...', payload); //setzt den Status, dass die knock Nachricht gesendet wird
+    socket.emit('knock', payload); //sendet die knock Nachricht an den Server mit der gameId und playerId als Payload
+});
+
+//bei buttonclick wird pass gesendet (Zug aussetzen)
+passButton.addEventListener('click', () => {
+    const gameId = Number.parseInt(playGameIdInput.value, 10);
+    const playerId = Number.parseInt(playPlayerIdInput.value, 10);
+
+    const payload = { gameId, playerId };
+    setStatus('Sende pass ...', payload);
+    socket.emit('pass', payload);
+});
+
 //folgende Socket.IO Event-Listener werden eingerichtet, um auf Nachrichten vom Server zu reagieren:
 //Client merkt, wenn die Verbindung zum Socket.IO Server hergestellt wurde, und gibt dies als Status aus
 //TODO: zukünftig nicht für Status verwenden, sondern um Spielupdates durchzufürhren etc.
@@ -101,6 +123,11 @@ socket.on('game-created', (data) => {
 socket.on('game-state', (state) => {
     setStatus('Spielstatus empfangen.');
     setGameState(state);
+});
+
+//Client empfängt die Nachricht, dass die Runde nach Klopfen beendet ist
+socket.on('round-ended', (data) => {
+    setStatus('Runde beendet.', data);
 });
 
 //Client empfängt eine Fehlermeldung vom Server und gibt diese als Status aus

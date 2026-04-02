@@ -84,6 +84,8 @@ function getGameState(game) {
         gameId: game.game_id,
         currentRound: game.currentRound,
         currentPlayerIndex: game.currentPlayerIndex,
+        knockedByPlayerId: game.knockedByPlayerId || null,
+        roundEnded: Boolean(game.roundEnded),
         players: game.players.map((player) => ({
             player_id: player.player_id,
             username: player.username,
@@ -351,15 +353,83 @@ io.on('connection', (socket) => {
             }
 
             //führt die Spiellogik aus (tauscht Handkarte gegen Tischkarte)
-            game.swapCard(playerId, handCardId, tableCardIndex);
+            const actionResult = game.swapCard(playerId, handCardId, tableCardIndex);
 
             //speichert den aktualisierten Spielzustand in der Datenbank
             await gameState.saveGame(connection, game);
 
             //sendet den aktualisierten Spielstatus an alle Clients im Spielraum
             io.to(roomId).emit('game-state', getGameState(game));
+            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
+                io.to(roomId).emit('round-ended', {
+                    reason: 'knock-cycle-complete',
+                    knockedByPlayerId: game.knockedByPlayerId
+                });
+            }
         } catch (error) {
             console.error('swap-card failed:', error);
+            socket.emit('game-error', { message: error.message });
+        }
+    });
+
+    //wenn der Client eine "knock" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('knock', async (data) => {
+        try {
+            const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
+            const playerId = Number.parseInt(data?.playerId, 10); //holt die playerId aus den übergebenen Daten und speichert sie als Zahl ab
+
+            const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+            
+            //überprüfen, ob das Spiel existiert
+            if (!game) {
+                socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                return;
+            }
+
+            
+            const actionResult = game.knock(playerId);//führt die Spiellogik für das Klopfen aus
+            await gameState.saveGame(connection, game);//speichert den aktualisierten Spielzustand in der Datenbank
+            io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
+            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
+                io.to(roomId).emit('round-ended', {
+                    reason: 'knock-cycle-complete',
+                    knockedByPlayerId: game.knockedByPlayerId
+                });
+            }
+        } catch (error) { //Fehlerbehandlung
+            console.error('knock failed:', error);
+            socket.emit('game-error', { message: error.message });
+        }
+    });
+
+    //wenn der Client eine "pass" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('pass', async (data) => {
+        try {
+            const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
+            const playerId = Number.parseInt(data?.playerId, 10); //holt die playerId aus den übergebenen Daten und speichert sie als Zahl ab
+
+            if (!roomId || !Number.isInteger(playerId)) { //validiert, dass die benötigten Werte gesetzt sind
+                socket.emit('game-error', { message: 'Ungültige Daten für pass.' });
+                return;
+            }
+
+            const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+            if (!game) { //überprüfen, ob das Spiel existiert
+                socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                return;
+            }
+
+            const actionResult = game.pass(playerId); //führt die Spiellogik für das Passen aus)
+            await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
+            io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
+            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
+                io.to(roomId).emit('round-ended', {
+                    reason: 'knock-cycle-complete',
+                    knockedByPlayerId: game.knockedByPlayerId
+                });
+            }
+        } catch (error) { //Fehlerbehandlung
+            console.error('pass failed:', error);
             socket.emit('game-error', { message: error.message });
         }
     });

@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS Game (
     status VARCHAR(20) DEFAULT 'waiting',  -- 'waiting', 'playing', 'finished'
     round_number INT DEFAULT 0,
     current_player_id INT,
+    knocked_by_player_id INT NULL,
+    round_ended BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

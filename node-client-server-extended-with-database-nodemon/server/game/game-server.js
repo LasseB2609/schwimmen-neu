@@ -8,6 +8,8 @@ class Game {
         this.tableCards = [];   // Array für die Tischkarten
         this.currentRound = 0;
         this.currentPlayerIndex = 0;
+        this.knockedByPlayerId = null; //speichert wer geklopft hat
+        this.roundEnded = false; //speichert, ob die Runde beendet ist
     }
 
     //Methode, um jedem Spieler zu Beginn einer Runde 3 Karten zu geben
@@ -56,11 +58,37 @@ class Game {
         return this.players.findIndex((player) => player.player_id === player_id);
     }
 
+    //wirft Fehler, falls die Runde bereits beendet ist
+    assertRoundNotEnded() {
+        if (this.roundEnded) {
+            throw new Error('Fehler: Die Runde ist beendet.');
+        }
+    }
+
+    //Methode, um den Zug zu wechseln und zu prüfen, ob die Runde nach Klopfen endet
+    advanceTurn() {
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length; //wechselt zum nächsten Spieler, wenn am Ende der Spielerreihe angekommen ist, wird wieder von vorne begonnen
+
+        const nextPlayer = this.getCurrentPlayer(); //holt den nächsten Spieler
+        const nextPlayerId = nextPlayer ? nextPlayer.player_id : null; //holt die player_id des nächsten Spielers (falls es eine gibt, ansonsten null)
+        //wenn geklopft wurde und der Klopfer wieder dran wäre, endet die Runde
+        if (this.knockedByPlayerId != null && nextPlayerId === this.knockedByPlayerId) {
+            this.roundEnded = true;
+        }
+
+        return {
+            nextPlayerId,
+            knockActive: this.knockedByPlayerId != null,
+            roundShouldEnd: this.roundEnded
+        }; //gibt die player_id des nächsten Spielers, ob geklopft wurde und ob die Runde enden sollte, zurück
+    }
+
     //Methode, um eine Handkarte mit einer Tischkarte zu tauschen
     //player_id = wer den Zug macht
     //handCardId = welche Karte aus der Hand gespielt werden soll
     //tableCardIndex = welche Tischkarte (0,1,2) getauscht werden soll
     swapCard(player_id, handCardId, tableCardIndex) {
+        this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
         const playerIndex = this.getPlayerIndexById(player_id);
 
         //überprüfen, ob der Spieler im Spiel ist
@@ -99,20 +127,22 @@ class Game {
         this.tableCards[tableCardIndex] = handCard;
 
         //wechselt den Zug zum nächsten Spieler
-        //currentPlayerIndex wird um 1 erhöht, damit der nächste Spieler an der Reihe ist. Wenn currentPlayerIndex das Ende des players-Arrays erreicht, wird es wieder auf 0 gesetzt (durch Modulo-Operation), damit der erste Spieler wieder am Zug ist.
-        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+        const turnInfo = this.advanceTurn();
 
         //gibt den neuen Zustand nach dem Zug zurück (hilfreich für Logs/Debug)
         return {
-            nextPlayerId: this.getCurrentPlayer() ? this.getCurrentPlayer().player_id : null,
+            nextPlayerId: turnInfo.nextPlayerId,
             playedBy: player_id,
-            tableCardIndex
+            tableCardIndex,
+            knockActive: turnInfo.knockActive,
+            roundShouldEnd: turnInfo.roundShouldEnd
         };
     }
 
     //new
     //Methode, um alle Handkarten mit den Tischkarten zu tauschen 
     swapAllCards(player_id) {
+        this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
         const playerIndex = this.getPlayerIndexById(player_id);
         const player = this.players[playerIndex];
         //überprüfen, ob der Spieler im Spiel ist
@@ -145,15 +175,79 @@ class Game {
             player.hand[i] = tableCard;
             this.tableCards[i] = handCard;
         }
+
+        const turnInfo = this.advanceTurn(); //zum nächsten Spieler wechseln
+        return {
+            nextPlayerId: turnInfo.nextPlayerId,
+            playedBy: player_id,
+            knockActive: turnInfo.knockActive,
+            roundShouldEnd: turnInfo.roundShouldEnd
+        }; //gibt den nächsten Spieler, wer gespielt hat, ob geklopft wurde und ob die Runde enden sollte zurück
     }
 
-    //MEthode, um zu klopfen, d.h. dass das SPiel nur noch eine Runde geht
-    //hierzu muss zunächst 1 Runde bereits gespielt worden sein
+    //MEthode, um zu klopfen, d.h. dass in dieser Runde jeder weitere Spieler nur noch einen Zug machen darf
+    //TODO: es darf nicht in der ersten Runde geklopft werden
     knock(player_id) {
+        this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
+
+        //es darf pro Runde nur einmal geklopft werden
+        if (this.knockedByPlayerId != null) {
+            throw new Error('Es wurde in dieser Runde bereits geklopft.');
+        }
         const playerIndex = this.getPlayerIndexById(player_id);
 
-        
+        //überprüfen, ob der Spieler im Spiel ist
+        //todo: überhaupt nötig?
+        if (playerIndex === -1) {
+            throw new Error('Spieler nicht im Spiel gefunden.');
+        }
+
+        //überprüfen, ob der Spieler an der Reihe ist
+        //todo: überhaupt nötig? oder evlt knopf irgendwie solange ausgrauen lassen oder so
+        if (this.currentPlayerIndex !== playerIndex) {
+            throw new Error('Du bist aktuell nicht am Zug.');
+        }
+
+        this.knockedByPlayerId = player_id;
+        const turnInfo = this.advanceTurn(); //nächster Spieler ist dran
+
+        return {
+            knockedBy: player_id,
+            nextPlayerId: turnInfo.nextPlayerId,
+            knockActive: true,
+            roundShouldEnd: turnInfo.roundShouldEnd
+        }; 
     } 
+
+    //Methode, um den Zug zu passen
+    pass(player_id) {
+        this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
+        const playerIndex = this.getPlayerIndexById(player_id); //speichert den Index des Spielers, der passen möchte
+
+        //überprüfen, ob der Spieler im Spiel ist
+        if (playerIndex === -1) {
+            throw new Error('Spieler nicht im Spiel gefunden.');
+        }
+
+        //überprüfen, ob der Spieler an der Reihe ist
+        if (this.currentPlayerIndex !== playerIndex) {
+            throw new Error('Du bist aktuell nicht am Zug.');
+        }
+
+        const turnInfo = this.advanceTurn(); //wechselt zum nächsten Spieler
+        return {
+            nextPlayerId: turnInfo.nextPlayerId,
+            playedBy: player_id,
+            knockActive: turnInfo.knockActive,
+            roundShouldEnd: turnInfo.roundShouldEnd
+        };
+    }
+
+    //setzt die Runde für die nächste Runde zurück
+    resetRoundEndState() {
+        this.knockedByPlayerId = null;
+        this.roundEnded = false;
+    }
 
     //Methode, um zu überprüfen, ob das Spiel vorbei ist, indem die Leben der Spieler überprüft werden
     checkIfGameOver() {

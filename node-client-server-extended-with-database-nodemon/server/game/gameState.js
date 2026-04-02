@@ -80,11 +80,13 @@ async function saveGame(connection, game) {
     //evtl TODO = ergebnisse mit try/catch abfangen
     await dbQuery(
         connection,
-        'UPDATE Game SET status = ?, round_number = ?, current_player_id = ? WHERE game_id = ?',
+        'UPDATE Game SET status = ?, round_number = ?, current_player_id = ?, knocked_by_player_id = ?, round_ended = ? WHERE game_id = ?',
         [
             'playing',
             game.currentRound || 1, //wenn game.currentRound existiert, übergib es, ansonsten 1 (weil es ja mindestens die erste Runde sein muss)
             currentPlayer ? currentPlayer.player_id : null, //wenn currentPlayer existiert, übergib dessen player_id, ansonsten null
+            game.knockedByPlayerId || null,
+            game.roundEnded ? 1 : 0,
             game.game_id
         ]
     );
@@ -154,7 +156,7 @@ async function loadGame(connection, gameId) {
     //lädt die Daten aus der Datenbanktabelle Game, mit game_id, status, round_number und current_player_id
     const gameRows = await dbQuery(
         connection,
-        'SELECT game_id, status, round_number, current_player_id FROM Game WHERE game_id = ? LIMIT 1',
+        'SELECT game_id, status, round_number, current_player_id, knocked_by_player_id, round_ended FROM Game WHERE game_id = ? LIMIT 1',
         [intGameId]
     );
 
@@ -232,8 +234,11 @@ async function loadGame(connection, gameId) {
     const game = new Game(intGameId, players, deck); //erstellt ein Game-Objekt mit der gameId, den Spielern und dem Deck
     game.tableCards = tableCards; //übergibt die Tischkarten an das Game-Objekt
     game.currentRound = gameRow.round_number || 1; //übergibt die aktuelle Rundennummer an das Game-Objekt, wenn sie in der Datenbankzeile existiert, ansonsten 1
+    game.knockedByPlayerId = gameRow.knocked_by_player_id || null; //übergibt die ID des klopfenden Spielers
+    game.roundEnded = Boolean(gameRow.round_ended); //übergibt, ob die Runde bereits beendet ist
     if (gameRow.current_player_id != null) {
-        game.currentPlayerIndex = game.getPlayerIndexById(gameRow.current_player_id); //übergibt den Index des aktuellen Spielers an das Game-Objekt
+        const currentPlayerIndex = game.getPlayerIndexById(gameRow.current_player_id);
+        game.currentPlayerIndex = currentPlayerIndex >= 0 ? currentPlayerIndex : 0; //übergibt den Index des aktuellen Spielers an das Game-Objekt (falls er nicht existiert oder ungültig ist, wird 0 übergeben)
     } else { 
         game.currentPlayerIndex = 0; //falls kein aktueller Spieler in der Datenbankzeile angegeben ist, wird der Index auf 0 gesetzt
     }

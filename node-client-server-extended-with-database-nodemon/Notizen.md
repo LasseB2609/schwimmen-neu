@@ -22,6 +22,8 @@ ToDos:
     - Status Ausgaben für das Debuggen wieder entfernen (überall)
     - Überprüfungen/Validierungen bei den Spielregeln, ob überhaupt 3 Karten etc. nötig sind - wieder entfernen vllt?
     - es können aktuell (02.04) noch Games erstellt werden, auch wenn eine Fehlermeldung kommt, dass die gegebenen Spieler nicht existieren
+    - eigene Round Relation?
+    - evtl. die ganzen Validierungen und getOrLoadGame, die bei allen Zugarten aufgerufen werden in eine eigene Funktion auslagern
 
 
 Warum Socket.io:
