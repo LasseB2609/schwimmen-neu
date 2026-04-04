@@ -1,3 +1,5 @@
+INFO: aktuell noch Fehler im code
+
 vor der Abgabe noch folgendes machen:
     -  Nodemon wieder entfernen (in Dockerfile und in der yaml, siehe sein Repo)
 

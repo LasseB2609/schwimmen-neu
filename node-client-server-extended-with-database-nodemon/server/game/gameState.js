@@ -79,8 +79,7 @@ async function createGame(connection, player_ids) {
             game.resetForNewRound(); //setzt das Spiel für eine neue Runde zurück
         }
     }
-
-    
+  
     //ruft die Funktion saveGame auf, um den aktuellen Zustand des Spiels in der Datenbank zu speichern
     await saveGame(connection, game);
     return game;
