@@ -82,10 +82,12 @@ app.use('/static', express.static('public'));
 function getGameState(game) {
     return {
         gameId: game.game_id,
+        status: game.status || 'playing',
         currentRound: game.currentRound,
         currentPlayerIndex: game.currentPlayerIndex,
         knockedByPlayerId: game.knockedByPlayerId || null,
         roundEnded: Boolean(game.roundEnded),
+        lastRoundSummary: game.lastRoundSummary || null,
         players: game.players.map((player) => ({
             player_id: player.player_id,
             username: player.username,
@@ -150,6 +152,67 @@ async function getOrLoadGame(roomId) {
     }
 
     return game; //gibt das Spiel zurück
+}
+
+//wertet eine Runde aus, wenn die Aktion das Rundenende markiert hat
+async function finalizeRoundIfNeeded(game, roomId, actionResult) {
+    if (!actionResult?.roundShouldEnd) {
+        return;
+    }
+
+    const roundSummary = game.endRound(); //beendet die Runde
+    await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
+
+    //sendet eine Nachricht an die Clients, dass die Runde beendet ist
+    io.to(roomId).emit('round-ended', {
+        reason: 'knock-cycle-complete',
+        knockedByPlayerId: game.knockedByPlayerId,
+        roundSummary
+    });
+
+    //wenn durch das Rundenende das Spiel zu Ende ist, wird eine Nachricht (mit Sieger und weiteren Infos) an die Clients gesendet
+    if (roundSummary.gameIsOver) {
+        io.to(roomId).emit('game-finished', {
+            winnerPlayerIds: roundSummary.winnerPlayerIds || []
+        });
+        io.to(roomId).emit('game-state', getGameState(game));
+        return;
+    }
+
+    //Direkte Rundenenden nach dem Austeilen (31/Feuer) werden so lange aufgelöst,
+    //bis eine spielbare Runde entstanden ist oder das Spiel beendet wurde.
+    while (game.roundEnded) {
+        game.resetForNewRound(); //nächste Runde vorbereiten
+
+        //Falls durch das Austeilen keine sofortige Rundenbeendigung entstanden ist:
+        if (!game.roundEnded) {
+            await gameState.saveGame(connection, game); //Speichert den aktualisierten Spielzustand in der Datenbank
+            io.to(roomId).emit('round-started', { //sendet eine Nachricht an die Clients, dass eine neue Runde gestartet ist
+                currentRound: game.currentRound,
+                currentPlayerId: game.getCurrentPlayer() ? game.getCurrentPlayer().player_id : null
+            });
+            io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
+            return; //verlässt die Funktion
+        }
+
+        //Falls durch das Austeilen eine sofortige Rundenbeendigung entstanden ist:
+        const immediateRoundSummary = game.endRound(); //beendet die Runde direkttte
+        await gameState.saveGame(connection, game); //speichert das Spiel mit der sofortigen Rundenbeendigung in der Datenbank
+        io.to(roomId).emit('round-ended', {
+            reason: 'immediate-round-end-on-deal',
+            roundSummary: immediateRoundSummary
+        }); //informt die Clients über die sofortige Rundenbeendigung
+
+        //wenn durch das sofortige Rundenende das SPiel zu Ende ist, wird folgendes durchgeführt
+        if (immediateRoundSummary.gameIsOver) {
+            //informiert die Clients über das Spielende, die Sieger und sendet den finalen Spielstand
+            io.to(roomId).emit('game-finished', {
+                winnerPlayerIds: immediateRoundSummary.winnerPlayerIds || []
+            }); 
+            io.to(roomId).emit('game-state', getGameState(game));
+            return;
+        }
+    }
 }
 
 //wenn sich ein Client mit Socket.io verbindet, wird die folgende Funktion ausgeführt
@@ -360,12 +423,7 @@ io.on('connection', (socket) => {
 
             //sendet den aktualisierten Spielstatus an alle Clients im Spielraum
             io.to(roomId).emit('game-state', getGameState(game));
-            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
-                io.to(roomId).emit('round-ended', {
-                    reason: 'knock-cycle-complete',
-                    knockedByPlayerId: game.knockedByPlayerId
-                });
-            }
+            await finalizeRoundIfNeeded(game, roomId, actionResult);
         } catch (error) {
             console.error('swap-card failed:', error);
             socket.emit('game-error', { message: error.message });
@@ -390,12 +448,7 @@ io.on('connection', (socket) => {
             const actionResult = game.knock(playerId);//führt die Spiellogik für das Klopfen aus
             await gameState.saveGame(connection, game);//speichert den aktualisierten Spielzustand in der Datenbank
             io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
-            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
-                io.to(roomId).emit('round-ended', {
-                    reason: 'knock-cycle-complete',
-                    knockedByPlayerId: game.knockedByPlayerId
-                });
-            }
+            await finalizeRoundIfNeeded(game, roomId, actionResult);
         } catch (error) { //Fehlerbehandlung
             console.error('knock failed:', error);
             socket.emit('game-error', { message: error.message });
@@ -422,12 +475,7 @@ io.on('connection', (socket) => {
             const actionResult = game.pass(playerId); //führt die Spiellogik für das Passen aus)
             await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
             io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
-            if (actionResult?.roundShouldEnd) { //wenn die Aktion dazu führt, dass die Runde beendet werden sollte, werden die Clients informiert
-                io.to(roomId).emit('round-ended', {
-                    reason: 'knock-cycle-complete',
-                    knockedByPlayerId: game.knockedByPlayerId
-                });
-            }
+            await finalizeRoundIfNeeded(game, roomId, actionResult);
         } catch (error) { //Fehlerbehandlung
             console.error('pass failed:', error);
             socket.emit('game-error', { message: error.message });

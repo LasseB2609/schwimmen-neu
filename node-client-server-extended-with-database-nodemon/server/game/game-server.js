@@ -6,10 +6,12 @@ class Game {
         this.players = players; // Array von Spielern
         this.deck = deck;       // Deck-Objekt
         this.tableCards = [];   // Array für die Tischkarten
-        this.currentRound = 0;
+        this.currentRound = 1;
         this.currentPlayerIndex = 0;
         this.knockedByPlayerId = null; //speichert wer geklopft hat
         this.roundEnded = false; //speichert, ob die Runde beendet ist
+        this.status = 'playing';
+        this.lastRoundSummary = null; //todo: überprüfen, ob überhaupt nötig
     }
 
     //Methode, um jedem Spieler zu Beginn einer Runde 3 Karten zu geben
@@ -36,16 +38,233 @@ class Game {
         ]
     }
 
-    startRound() {
-        //todo
-    }
-
+    //Methode, um die Runde zu beenden
     endRound() {
-        //todo
+        //wenn die Runde bereits beendet ist, wird entweder die Zusammenfassung der letzten Runde zurückgegeben oder das Spiel insgesamt beendet
+        if (this.status === 'finished') {
+            return this.lastRoundSummary || this.endGame();
+        }
+
+        //holt die Spieler, die noch Leben haben
+        const activePlayers = this.players.filter((player) => player.lives > 0);
+
+        //wenn nur noch 1 oder kein Spieler mehr Leben hat, ist das Spiel vorbei und es wird endGame aufgerufen
+        if (activePlayers.length <= 1) {
+            return this.endGame({
+                winnerPlayerIds: activePlayers.map((player) => player.player_id),
+                loserPlayerIds: [],
+                scores: []
+            });
+        }
+
+        //pro Spieler Rundenscore berechnen und speichern
+        const scores = activePlayers.map((player) => {
+            const roundScore = this.calculateHandScore(player.hand);
+            player.score = roundScore;
+            return {
+                player_id: player.player_id,
+                score: roundScore,
+                comparableScore: this.toComparableScore(roundScore),
+                livesBefore: player.lives
+            };
+        });
+
+        //sucht nach einem Spieler mit Feuer
+        const feuerPlayer = scores.find((entry) => entry.score === 'Feuer');
+
+        //wenn es einen Feuer-Spieler gibt, wird folgend ausgewertet
+        if (feuerPlayer) {
+            const loserPlayerIds = scores
+                .filter((entry) => entry.player_id !== feuerPlayer.player_id)
+                .map((entry) => entry.player_id); //alle Spieler außer der Feuer-Spieler werden gespeichert
+
+            //iteriert durch die Verlierer und zieht ein Leben ab
+            for (const loserId of loserPlayerIds) {
+                const loser = this.players.find((player) => player.player_id === loserId);
+                if (loser) {
+                    loser.lives = Math.max(0, loser.lives - 1); //alle anderen verlieren ein Leben, doch es wird nicht unter 0 gegangen
+                }
+            }
+
+            //wenn nach der Auswertung von Feuer das Spiel vorbei ist, wird folgendes ausgeführt
+            if (this.checkIfGameOver()) {
+                return this.endGame({
+                    winnerPlayerIds: this.players
+                        .filter((player) => player.lives > 0)
+                        .map((player) => player.player_id),
+                    loserPlayerIds,
+                    scores: scores.map((entry) => {
+                        const player = this.players.find((p) => p.player_id === entry.player_id);
+                        return {
+                            player_id: entry.player_id,
+                            score: entry.score,
+                            livesAfter: player ? player.lives : entry.livesBefore
+                        };
+                    })
+                }); //beendet das Spiel und gibt eine Zusammenfassung zurück
+            }
+
+            this.status = 'playing'; //das Spiel läuft weiter
+            this.lastRoundSummary = {
+                round: this.currentRound,
+                winnerPlayerIds: [],
+                loserPlayerIds,
+                scores: scores.map((entry) => {
+                    const player = this.players.find((p) => p.player_id === entry.player_id);
+                    return {
+                        player_id: entry.player_id,
+                        score: entry.score,
+                        livesAfter: player ? player.lives : entry.livesBefore
+                    };
+                }),
+                gameIsOver: false
+            };
+
+            return this.lastRoundSummary; //springt hier raus, damit die weitere Auswertung übersprungen wird
+        }
+
+        const minComparableScore = Math.min(...scores.map((entry) => entry.comparableScore)); //Sucht den niedrigsten Score aus allen Scores
+        const lowestScorePlayers = scores.filter((entry) => entry.comparableScore === minComparableScore); //Sucht die Spieler mit dem niedrigsten Score
+        const loserPlayerIds = lowestScorePlayers.map((entry) => entry.player_id); //Speichert die Ids der Spieler mti dem niedrigsten Score
+
+        //Verlierer verlieren ein Leben
+        for (const loserId of loserPlayerIds) {
+            const loser = this.players.find((player) => player.player_id === loserId);
+            if (loser) {
+                loser.lives = Math.max(0, loser.lives - 1);
+            }
+        }
+
+        //nach der Auswertung wird geprüft, ob das Spiel insgesamt vorbei ist
+        const gameIsOver = this.checkIfGameOver();
+        if (gameIsOver) {
+            return this.endGame({
+                winnerPlayerIds: this.players
+                    .filter((player) => player.lives > 0)
+                    .map((player) => player.player_id),
+                loserPlayerIds,
+                scores: scores.map((entry) => {
+                    const player = this.players.find((p) => p.player_id === entry.player_id);
+                    return {
+                        player_id: entry.player_id,
+                        score: entry.score,
+                        livesAfter: player ? player.lives : entry.livesBefore
+                    };
+                })
+            }); //beendet das Spiel und gibt eine Zusammenfassung zurück
+        }
+
+        this.status = 'playing'; //das Spiel läuft weiter
+
+        //speichert eine Zusammenfassung der Runde und gibt diese zurück
+        this.lastRoundSummary = {
+            round: this.currentRound,
+            winnerPlayerIds: [],
+            loserPlayerIds,
+            scores: scores.map((entry) => {
+                const player = this.players.find((p) => p.player_id === entry.player_id);
+                return {
+                    player_id: entry.player_id,
+                    score: entry.score,
+                    livesAfter: player ? player.lives : entry.livesBefore
+                };
+            }),
+            gameIsOver: false
+        };
+        return this.lastRoundSummary;
     }
 
+    //überprüft, ob eine Hand sofort die Runde beendet (31 oder Feuer)
+    hasImmediateRoundEndHand(player) {
+        const handScore = this.calculateHandScore(player?.hand || []);
+        return handScore === 31 || handScore === 'Feuer';
+    }
+
+    //beendet die Runde sofort (bei 31 oder Feuer)
+    endRoundImmediately() {
+        this.roundEnded = true;
+        return {
+            nextPlayerId: this.getCurrentPlayer() ? this.getCurrentPlayer().player_id : null,
+            knockActive: this.knockedByPlayerId != null,
+            roundShouldEnd: true
+        };
+    }
+
+    toComparableScore(score) {
+        if (score === 'Feuer') {
+            return Number.POSITIVE_INFINITY;
+        }
+        return Number(score) || 0;
+    }
+
+    //Methode, um die Runde zurückzusetzen und für die nächste Runde vorzubereiten
     resetForNewRound() {
-        //todo
+        //alle bisher verwendeten Karten wieder ins Deck einsammeln
+        const collectedCards = [
+            ...this.deck.cards, //die restlichen Karten im Deck
+            ...this.tableCards, //die Karten auf dem Tisch
+            ...this.players.flatMap((player) => player.hand) //die Karten der Spieler, reduziert auf ein Array 
+        ];
+
+        this.deck.cards = collectedCards;
+        this.deck.shuffle(); //mische das Kartendeck
+
+        //leert die HÄnde der Spieler
+        for (const player of this.players) {
+            player.clearHand();
+        }
+
+        //setzt relevante Game-States zurück
+        this.tableCards = [];
+        this.knockedByPlayerId = null;
+        this.roundEnded = false;
+        this.lastRoundSummary = null;
+        this.currentRound += 1;
+
+        //aktiver Spieler bleibt am Tischindex stehen (der naechste Zug startet von dort)
+        //TODO: Eine Start new Round methode?
+        this.dealInitialHands();
+        const roundEndsImmediately = this.checkForImmediateRoundEndOnDeal();
+        if (!roundEndsImmediately) {
+            this.dealTableCards();
+        }
+    }
+
+    //überprüft nach dem Austeilen, ob jemand 31 oder Feuer hat und beendet die Runde sofort, falls ja
+    checkForImmediateRoundEndOnDeal() {
+        for (const player of this.players) {
+            if (this.hasImmediateRoundEndHand(player)) {
+                this.roundEnded = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //berechnet die Punktzahl einer Hand
+    calculateHandScore(hand) {
+        if (!Array.isArray(hand) || hand.length === 0) {
+            return 0;
+        }
+
+        //Drilling zählt als 30.5
+        const sameRank = hand.every((card) => card && card.rank === hand[0].rank); //geht durch jedes Element der Handkarten und gibt true zurück, falls alle Karten den gleichen Rang haben
+        if (sameRank) {
+            if (hand[0].rank === 'A') { //wenn alle Karten Asse sind, zählt es als Feuer (alle anderen verlieren ein Leben)
+                return 'Feuer';
+            }
+            return 30.5;
+        }
+
+        //ansonsten zählt die beste Farbensumme
+        const sumBySuit = new Map();
+        for (const card of hand) {
+            if (!card) continue; //Sicherheitscheck
+            const previous = sumBySuit.get(card.suit) || 0; //holt die bisherige Summe für die Farbe der Karte, oder 0 wenn es noch keine Karten dieser Farbe gab
+            sumBySuit.set(card.suit, previous + (card.value || 0)); //aktualisiert die Summe für die Farbe der Karte, indem der Kartenwert addiert wird
+        }
+
+        return Math.max(...sumBySuit.values()); //gibt die höchste Summe zurück, also die beste Farbe der Hand
     }
 
     //Methode, um den aktuell aktiven Spieler zurückzugeben
@@ -126,6 +345,11 @@ class Game {
         player.hand[handCardPos] = tableCard;
         this.tableCards[tableCardIndex] = handCard;
 
+        //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
+        if (this.hasImmediateRoundEndHand(player)) {
+            return this.endRoundImmediately();
+        }
+
         //wechselt den Zug zum nächsten Spieler
         const turnInfo = this.advanceTurn();
 
@@ -174,6 +398,11 @@ class Game {
 
             player.hand[i] = tableCard;
             this.tableCards[i] = handCard;
+        }
+
+        //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
+        if (this.hasImmediateRoundEndHand(player)) {
+            return this.endRoundImmediately();
         }
 
         const turnInfo = this.advanceTurn(); //zum nächsten Spieler wechseln
@@ -251,16 +480,27 @@ class Game {
 
     //Methode, um zu überprüfen, ob das Spiel vorbei ist, indem die Leben der Spieler überprüft werden
     checkIfGameOver() {
-        for (let player of this.players) {
-            if (player.lives <= 0) {
-                return true; // Spiel ist vorbei, wenn ein Spieler keine Leben mehr hat
-            }
-        }
-        return false; // Spiel ist noch nicht vorbei
+        //Spiel ist vorbei, wenn nur noch 1 aktiver Spieler (mit Leben > 0) übrig ist
+        const activePlayers = this.players.filter((player) => player.lives > 0);
+        return activePlayers.length <= 1;
     }
 
-    endGame() {
-        //todo
+    endGame(overrides = {}) {
+        const winnerPlayerIds = overrides.winnerPlayerIds || this.players
+            .filter((player) => player.lives > 0)
+            .map((player) => player.player_id); //speichert die Ids der Spieler, die gewonnen haben
+
+        this.status = 'finished'; //Status auf beendet setzen
+        this.roundEnded = true; //Runde beenden
+        this.lastRoundSummary = {
+            round: this.currentRound,
+            winnerPlayerIds,
+            loserPlayerIds: overrides.loserPlayerIds || [],
+            scores: overrides.scores || [],
+            gameIsOver: true
+        }; //speichern einer Zusammenfassung der letzten Runde
+
+        return this.lastRoundSummary;
     }
 }
 

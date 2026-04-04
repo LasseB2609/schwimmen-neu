@@ -65,7 +65,20 @@ async function createGame(connection, player_ids) {
     //erstellt ein Game-Objekt mit der ID, den Spielern und dem Deck
     const game = new Game(gameId, players, deck);
     game.dealInitialHands(); //teilt Anfangshände aus
-    game.dealTableCards(); //teilt Tischkarten aus
+    const roundEndsImmediately = game.checkForImmediateRoundEndOnDeal(); //prüft danach auf 31/Feuer
+    if (!roundEndsImmediately) {
+        game.dealTableCards(); //Tischkarten nur legen, wenn die Runde nicht sofort beendet ist
+    } else {
+        //Falls die Runde direkt beim ersten Austeilen endet, wird sie hier direkt ausgewertet
+        //und so lange fortgesetzt, bis eine spielbare Runde entstanden ist oder das Spiel endet.
+        while (game.roundEnded) {
+            const roundSummary = game.endRound(); //beendet die Runde
+            if (roundSummary.gameIsOver) {
+                break; //falls das gesamte Spiel vorbei ist, wird die Schleife verlassen
+            }
+            game.resetForNewRound(); //setzt das Spiel für eine neue Runde zurück
+        }
+    }
 
     
     //ruft die Funktion saveGame auf, um den aktuellen Zustand des Spiels in der Datenbank zu speichern
@@ -82,11 +95,11 @@ async function saveGame(connection, game) {
         connection,
         'UPDATE Game SET status = ?, round_number = ?, current_player_id = ?, knocked_by_player_id = ?, round_ended = ? WHERE game_id = ?',
         [
-            'playing',
+            game.status || 'playing',
             game.currentRound || 1, //wenn game.currentRound existiert, übergib es, ansonsten 1 (weil es ja mindestens die erste Runde sein muss)
             currentPlayer ? currentPlayer.player_id : null, //wenn currentPlayer existiert, übergib dessen player_id, ansonsten null
             game.knockedByPlayerId || null,
-            game.roundEnded ? 1 : 0,
+            game.roundEnded ? 1 : 0, //wenn game.roundEnded existiert und true ist, übergib 1, ansonsten 0 
             game.game_id
         ]
     );
@@ -234,6 +247,7 @@ async function loadGame(connection, gameId) {
     const game = new Game(intGameId, players, deck); //erstellt ein Game-Objekt mit der gameId, den Spielern und dem Deck
     game.tableCards = tableCards; //übergibt die Tischkarten an das Game-Objekt
     game.currentRound = gameRow.round_number || 1; //übergibt die aktuelle Rundennummer an das Game-Objekt, wenn sie in der Datenbankzeile existiert, ansonsten 1
+    game.status = gameRow.status || 'playing'; //übergibt den Spielstatus an das Game-Objekt, wenn er in der Datenbankzeile existiert, ansonsten 'playing'
     game.knockedByPlayerId = gameRow.knocked_by_player_id || null; //übergibt die ID des klopfenden Spielers
     game.roundEnded = Boolean(gameRow.round_ended); //übergibt, ob die Runde bereits beendet ist
     if (gameRow.current_player_id != null) {

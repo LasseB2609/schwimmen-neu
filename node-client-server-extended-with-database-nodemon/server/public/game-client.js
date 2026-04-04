@@ -130,6 +130,16 @@ socket.on('round-ended', (data) => {
     setStatus('Runde beendet.', data);
 });
 
+//Client empfängt den Start einer neuen Runde
+socket.on('round-started', (data) => {
+    setStatus('Neue Runde gestartet.', data);
+});
+
+//Client empfängt die Nachricht, dass das Spiel beendet ist
+socket.on('game-finished', (data) => {
+    setStatus('Spiel beendet.', data);
+});
+
 //Client empfängt eine Fehlermeldung vom Server und gibt diese als Status aus
 socket.on('game-error', (error) => {
     setStatus('Serverfehler empfangen.', error);
