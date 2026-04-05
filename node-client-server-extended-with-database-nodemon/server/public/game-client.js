@@ -8,17 +8,17 @@ const socket = io();
 //holt die HTML-Elemente, die für die Interaktion mit der Seite benötigt werden
 const createGameButton = document.getElementById('createGameButton');
 const joinGameButton = document.getElementById('joinGameButton');
-const player1Input = document.getElementById('player1');
-const player2Input = document.getElementById('player2');
-const joinGameIdInput = document.getElementById('joinGameId');
+const player1El = document.getElementById('player1');
+const player2El = document.getElementById('player2');
+const joinGameIdEl = document.getElementById('joinGameId');
 const swapCardButton = document.getElementById('swapCardButton');
 const swapAllButton = document.getElementById('swapAllButton');
 const knockButton = document.getElementById('knockButton');
 const passButton = document.getElementById('passButton');
-const playGameIdInput = document.getElementById('playGameId');
-const playPlayerIdInput = document.getElementById('playPlayerId');
-const playHandCardIdInput = document.getElementById('playHandCardId');
-const playTableCardIndexInput = document.getElementById('playTableCardIndex');
+const playGameIdEl = document.getElementById('playGameId');
+const clientPlayerIdEl = document.getElementById('clientPlayerId');
+const selectedHandCardIdEl = document.getElementById('selectedHandCardId');
+const selectedTableCardIndexEl = document.getElementById('selectedTableCardIndex');
 const statusOutput = document.getElementById('statusOutput');
 const stateOutput = document.getElementById('stateOutput');
 
@@ -53,11 +53,11 @@ const queryPlayerId = Number.parseInt(pageParams.get('playerId'), 10); //holt di
 
 //wenn gameId oder playerId als Query-Parameter übergeben wurden, werden diese direkt in die entsprechenden Input-Felder eingetragen
 if (Number.isInteger(queryGameId)) {
-    joinGameIdInput.value = queryGameId;
-    playGameIdInput.value = queryGameId;
+    joinGameIdEl.value = queryGameId;
+    playGameIdEl.value = queryGameId;
 }
 if (Number.isInteger(queryPlayerId)) {
-    playPlayerIdInput.value = queryPlayerId;
+    clientPlayerIdEl.value = queryPlayerId;
 }
 
 //gibt den Status aus (zum debuggen)
@@ -81,8 +81,8 @@ function toInt(value) {
 function clearSelection() {
     selectedHandCardId = null;
     selectedTableCardIndex = null;
-    playHandCardIdInput.value = '';
-    playTableCardIndexInput.value = '';
+    selectedHandCardIdEl.value = '';
+    selectedTableCardIndexEl.value = '';
 }
 
 //Prüft zentral, ob dieser Client gerade Karten auswählen darf.
@@ -92,7 +92,7 @@ function isMyTurnInState(state) {
     }
 
     const players = Array.isArray(state.players) ? state.players : [];
-    const myPlayerId = toInt(playPlayerIdInput.value);
+    const myPlayerId = toInt(clientPlayerIdEl.value);
     const myPlayer = players.find((player) => player.player_id === myPlayerId);
     const currentPlayer = Number.isInteger(state.currentPlayerIndex) ? players[state.currentPlayerIndex] : null;
 
@@ -107,11 +107,14 @@ function isMyTurnInState(state) {
 }
 
 //TODO: Ab hier muss noch kommentiert werden
+
+//Methode, um eine Karte in ein lesbares Format umzuwandeln (für die Anzeige)
 function cardToText(card) {
     if (!card) {
         return '-';
     }
 
+    //Maps für die Farbe und den Wert der Karten
     const rankMap = {
         A: 'Ass',
         K: 'Koenig',
@@ -125,15 +128,18 @@ function cardToText(card) {
         Pik: 'Pik'
     };
 
+    //erstellt aus den Maps lesbare Labels für die Karte
     const rankLabel = rankMap[card.rank] || String(card.rank || '?');
     const suitLabel = suitMap[card.suit] || String(card.suit || '?');
     return `${rankLabel} ${suitLabel}`;
 }
 
+//Funktion, die ein HTML-Element für eine Karte erstellt
 function createCardElement(text, options = {}) {
-    const element = document.createElement('button');
+    const element = document.createElement('button'); //damit die Karte anklickbar wird
     element.type = 'button';
     element.className = 'game-card';
+    //entsprechend der übergebenen Optionen werden z.B. Klassen hinzugefügt
     if (options.isBack) {
         element.classList.add('back');
     }
@@ -146,59 +152,67 @@ function createCardElement(text, options = {}) {
         element.classList.add('selected');
     }
     element.textContent = text;
+    //wenn eine onClick-Funktion übergeben wurde, wird diese als EventListener hinzugefügt
     if (typeof options.onClick === 'function') {
         element.addEventListener('click', options.onClick);
     }
     return element;
 }
 
-function renderOpponent(labelEl, cardsEl, player, revealCards) {
-    cardsEl.innerHTML = '';
+//Methode, um die Informationen und Karten eines Gegners zu rendern
+function renderOpponent(labelElement, cardsElement, player, revealCards) {
+    cardsElement.innerHTML = ''; //leert das Element komplett (falls vorher schon Karten drin waren)
 
+    //falls es dort keinen Spieler gibt, wird "Frei" angezeigt und die Funktion verlassen
     if (!player) {
-        labelEl.textContent = 'Frei';
+        labelElement.textContent = 'Frei';
         return;
     }
 
+    //der Name des Gegners wird angezeigt, sowie die Anzahl der Leben und ggf. der Score (je nachdem, ob die Karten aufgedeckt wurden))
     const scoreText = revealCards ? (player.score ?? '-') : '?';
-    labelEl.textContent = `${player.username || `Player ${player.player_id}`} | Leben: ${player.lives} | Score: ${scoreText}`;
+    labelElement.textContent = `${player.username || `Player ${player.player_id}`} | Leben: ${player.lives} | Score: ${scoreText}`;
 
+    //die Karten des Gegners werden gerendert (als Text oder als "Verdeckt", je nachdem, ob die Karten aufgedeckt wurden)
     const hand = Array.isArray(player.hand) ? player.hand : [];
     for (const card of hand) {
-        cardsEl.appendChild(createCardElement(revealCards ? cardToText(card) : 'Verdeckt', { isBack: !revealCards }));
+        cardsElement.appendChild(createCardElement(revealCards ? cardToText(card) : 'Verdeckt', { isBack: !revealCards }));
     }
 }
 
 //ordnet Gegner relativ zum eigenen Sitz im Uhrzeigersinn an
 //offset 1 = links, offset 2 = oben, offset 3 = rechts (bei 4 Spielern)
 function getOpponentSlots(players, myPlayer) {
-    const slots = { top: null, left: null, right: null };
+    const slots = { top: null, left: null, right: null }; //die möglichen Positionen
     //wenn Spieler oder eigener Spieler nicht definiert sind oder es weniger als 2 Spieler gibt, können keine Slots sinnvoll zugeordnet werden
     if (!Array.isArray(players) || !myPlayer || players.length < 2) {
         return slots;
     }
 
-    const n = players.length;
+    const i = players.length;
     const mySeat = myPlayer.seat_index;
     for (const player of players) {
+        //überspringt den eigenen Spieler (da dieser immer unten sitzt)
         if (player.player_id === myPlayer.player_id) {
             continue;
         }
 
-        const offset = (player.seat_index - mySeat + n) % n;
-        if (offset === 1) {
+        const offset = (player.seat_index - mySeat + i) % i; //berechnet die relative Position des Gegners basierend auf der Sitzordnung
+        if (offset === 1) { //links
             slots.left = player;
-        } else if (offset === 2) {
+        } else if (offset === 2) { //oben
             slots.top = player;
-        } else if (offset === 3) {
+        } else if (offset === 3) { //rechts
             slots.right = player;
         }
     }
 
-    return slots;
+    return slots; //Rückgabe
 }
 
+//Methode, um das gesamte Spielbrett zu rendern
 function renderBoard(state) {
+    //falls kein Gamestate übergeben wurde, wird die Funktion verlassen
     if (!state) {
         return;
     }
@@ -206,18 +220,19 @@ function renderBoard(state) {
     //Merkt sich den letzten bekannten State, damit Auswahl-Re-Render ohne neues Socket-Event funktioniert.
     lastGameState = state;
 
-    const players = Array.isArray(state.players) ? state.players : [];
-    const myPlayerId = toInt(playPlayerIdInput.value);
-    const myPlayer = players.find((player) => player.player_id === myPlayerId) || null;
-    const opponentSlots = getOpponentSlots(players, myPlayer);
-    const revealOthers = Boolean(state.roundEnded || state.status === 'finished' || state.lastRoundSummary);
+    const players = Array.isArray(state.players) ? state.players : []; //Spieler
+    const myPlayerId = toInt(clientPlayerIdEl.value); //eigene playerId aus dem Input Feld
+    const myPlayer = players.find((player) => player.player_id === myPlayerId) || null; //eigener Spieler
+    const opponentSlots = getOpponentSlots(players, myPlayer); //Sitze der Gegner
+    const revealOthers = Boolean(state.roundEnded || state.status === 'finished' || state.lastRoundSummary); //legt fest, ob die Karten der Gegner aufgedeckt werden sollen (z.B. am Ende der Runde oder des Spiels)
 
+    //legt die Werte für die aktuelle Runde, den eigenen Score und die Informationen zum aktuellen Spieler am Zug fest
     roundValue.textContent = state.currentRound ?? '-';
     myScoreValue.textContent = myPlayer ? (myPlayer.score ?? '-') : '-';
     ownPlayerLabel.textContent = myPlayer
         ? `${myPlayer.username || `Player ${myPlayer.player_id}`} | Leben: ${myPlayer.lives}`
         : 'Deine Karten';
-
+    //zeigt an, welcher Spieler am Zug ist und speichert seine playerId (für spätere Verwendung)
     let currentPlayerId = null;
     if (Number.isInteger(state.currentPlayerIndex) && players[state.currentPlayerIndex]) {
         const currentPlayer = players[state.currentPlayerIndex];
@@ -227,7 +242,7 @@ function renderBoard(state) {
         turnInfo.textContent = 'Warte auf Spielstatus ...';
     }
 
-    const isMyTurn = isMyTurnInState(state);
+    const isMyTurn = isMyTurnInState(state); //prüft, ob der eigene Spieler aktuell am Zug ist
 
     //Wenn der Zug wechselt, wird die lokale Auswahl zurückgesetzt,
     //damit keine alte Auswahl beim nächsten Spieler hängen bleibt.
@@ -236,33 +251,39 @@ function renderBoard(state) {
         lastCurrentPlayerId = currentPlayerId;
     }
 
+    //rendert die 3 Gegner mit ihren Informationen und Karten (Vorder- oder Rückseite)
     renderOpponent(opponentTopLabel, opponentTopCards, opponentSlots.top, revealOthers);
     renderOpponent(opponentLeftLabel, opponentLeftCards, opponentSlots.left, revealOthers);
     renderOpponent(opponentRightLabel, opponentRightCards, opponentSlots.right, revealOthers);
 
-    ownCardsContainer.innerHTML = '';
+    ownCardsContainer.innerHTML = ''; //löscht mögliche alten Karten des eigenen Spielers
     const myHand = Array.isArray(myPlayer?.hand) ? myPlayer.hand : [];
-    const validHandCardIds = new Set(myHand.map((card) => card.card_id));
-    if (!validHandCardIds.has(selectedHandCardId)) {
+    const handCardIds = new Set(myHand.map((card) => card.card_id)); //nimmt nur die Ids
+    //überprüft, ob die aktuell ausgewählte Handkarte noch in der Hand ist, falls nicht, wird die Auswahl zurückgesetzt
+    if (!handCardIds.has(selectedHandCardId)) {
         selectedHandCardId = null;
-        playHandCardIdInput.value = '';
+        selectedHandCardIdEl.value = '';
     }
-
+    //für jede Karte der Hand wird ein HTML-Element erstellt, das den Kartentext anzeigt und ggf. anklickbar ist
     for (const card of myHand) {
-        const isSelected = selectedHandCardId === card.card_id;
+        const isSelected = selectedHandCardId === card.card_id; //speichert, ob die Karte aktuell ausgewählt ist
         ownCardsContainer.appendChild(createCardElement(cardToText(card), {
-            clickable: Boolean(isMyTurn),
-            selected: isSelected,
-            onClick: () => {
+            clickable: Boolean(isMyTurn), //legt fest, ob die Karte anklickbar ist
+            selected: isSelected, //legt fest, ob die Karte als ausgewählt angezeigt wird
+            onClick: () => { //beim Klick auf die Karte wird sie ausgewählt oder die Auswahl aufgehoben, und das Board wird neu gerendert, damit die Auswahl sichtbar wird
                 selectedHandCardId = selectedHandCardId === card.card_id ? null : card.card_id;
-                playHandCardIdInput.value = selectedHandCardId == null ? '' : String(selectedHandCardId);
+                selectedHandCardIdEl.value = selectedHandCardId == null ? '' : String(selectedHandCardId);
                 renderBoard(lastGameState);
             }
         }));
     }
 
-    tableCardsContainer.innerHTML = '';
-    const tableCards = Array.isArray(state.tableCards) ? state.tableCards : [];
+    tableCardsContainer.innerHTML = ''; //löscht mögliche alten Karten auf dem Tisch
+    const tableCards = Array.isArray(state.tableCards) ? state.tableCards : []; //speichert die Tischkarten
+    //setzt die aktuell ausgewählte Tischkarte zurück, falls folgende checks fehlschlagen:
+    // - die Auswahl ist keine gültige Zahl
+    // - die Auswahl ist außerhalb der Grenzen der Tischkarten
+    // - die ausgewählte Karte existiert nicht
     if (
         !Number.isInteger(selectedTableCardIndex)
         || selectedTableCardIndex < 0
@@ -270,9 +291,10 @@ function renderBoard(state) {
         || !tableCards[selectedTableCardIndex]
     ) {
         selectedTableCardIndex = null;
-        playTableCardIndexInput.value = '';
+        selectedTableCardIndexEl.value = '';
     }
 
+    //für jede Karte auf dem Tisch wird ein HTML-Element erstellt, das den Kartentext anzeigt und ggf. anklickbar ist
     tableCards.forEach((card, index) => {
         const isSelected = selectedTableCardIndex === index;
         tableCardsContainer.appendChild(createCardElement(cardToText(card), {
@@ -280,18 +302,18 @@ function renderBoard(state) {
             selected: isSelected,
             onClick: () => {
                 selectedTableCardIndex = selectedTableCardIndex === index ? null : index;
-                playTableCardIndexInput.value = selectedTableCardIndex == null ? '' : String(selectedTableCardIndex);
+                selectedTableCardIndexEl.value = selectedTableCardIndex == null ? '' : String(selectedTableCardIndex);
                 renderBoard(lastGameState);
             }
         }));
     });
 
-    deckPile.textContent = 'Deck';
+    deckPile.textContent = 'Deck'; //TODO: Deck als Stapel mit Rückseite rendern (aktuell nur Text mit "Deck")
 }
 
 //bei buttonclick wird mit create-game und den eingetragenen playerIds versucht, ein neues Spiel zu erstellen
 createGameButton.addEventListener('click', () => {
-    const playerIds = [toInt(player1Input.value), toInt(player2Input.value)].filter(Number.isInteger);
+    const playerIds = [toInt(player1El.value), toInt(player2El.value)].filter(Number.isInteger);
     const payload = { playerIds };
     setStatus('Sende create-game ...', payload);
     socket.emit('create-game', payload);
@@ -299,7 +321,7 @@ createGameButton.addEventListener('click', () => {
 
 //bei buttonclick wird mit join-game und der eingetragenen gameId versucht, einem bestehenden Spiel beizutreten
 joinGameButton.addEventListener('click', () => {
-    const gameId = toInt(joinGameIdInput.value);
+    const gameId = toInt(joinGameIdEl.value);
     const payload = { gameId };
     setStatus('Sende join-game ...', payload);
     socket.emit('join-game', payload);
@@ -307,8 +329,8 @@ joinGameButton.addEventListener('click', () => {
 
 //bei buttonclick wird mit swap-card und den ausgewählten Karten versucht, eine Karte zu tauschen
 swapCardButton.addEventListener('click', () => {
-    const gameId = toInt(playGameIdInput.value);
-    const playerId = toInt(playPlayerIdInput.value);
+    const gameId = toInt(playGameIdEl.value);
+    const playerId = toInt(clientPlayerIdEl.value);
 
     const players = Array.isArray(lastGameState?.players) ? lastGameState.players : [];
     const currentIndex = lastGameState?.currentPlayerIndex;
@@ -343,14 +365,14 @@ swapAllButton.addEventListener('click', () => {
 
 //bei buttonclick wird mit knock signalisiert, dass in dieser Runde jeder weiterer Spieler nur noch einen Zug machen darf
 knockButton.addEventListener('click', () => {
-    const payload = { gameId: toInt(playGameIdInput.value), playerId: toInt(playPlayerIdInput.value) };
+    const payload = { gameId: toInt(playGameIdEl.value), playerId: toInt(clientPlayerIdEl.value) };
     setStatus('Sende knock ...', payload);
     socket.emit('knock', payload);
 });
 
 //bei buttonclick wird mit pass signalisiert, dass der Spieler passen möchte
 passButton.addEventListener('click', () => {
-    const payload = { gameId: toInt(playGameIdInput.value), playerId: toInt(playPlayerIdInput.value) };
+    const payload = { gameId: toInt(playGameIdEl.value), playerId: toInt(clientPlayerIdEl.value) };
     setStatus('Sende pass ...', payload);
     socket.emit('pass', payload);
 });
@@ -374,8 +396,8 @@ socket.on('disconnect', () => {
 
 //Client empfängt die Nachricht, dass ein neues Spiel erstellt wurde, und gibt dies als Status aus
 socket.on('game-created', (data) => {
-    joinGameIdInput.value = data.gameId;
-    playGameIdInput.value = data.gameId;
+    joinGameIdEl.value = data.gameId;
+    playGameIdEl.value = data.gameId;
     setStatus('Spiel erstellt.', data);
 });
 
