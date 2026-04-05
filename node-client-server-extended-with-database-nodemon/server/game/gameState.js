@@ -28,6 +28,7 @@ async function createGame(connection, player_ids) {
     //sucht die Spieler zunächst in der Datenbank
     //wenn sie gefunden werden, werden sie als Player-Objekte erstellt und in einem Array gespeichert. Gleichzeitig wird die Beziehung zwischen Game und Player in der Game_Player Tabelle gespeichert, damit wir später wissen, welche Spieler zu welchem Spiel gehören.
     const players = [];
+    let seatIndex = 0;
     for (const playerId of player_ids) {
         const playerRows = await dbQuery(
             connection,
@@ -40,15 +41,18 @@ async function createGame(connection, player_ids) {
 
         //erstellt ein Player-Objekt aus der Datenbankzeile und fügt es dem players Array hinzu
         const player = new Player(playerRows[0].player_id, playerRows[0].username);
+        player.seatIndex = seatIndex;
         players.push(player);
 
         //fügt den Spieler mit dem Spiel in die Game_Player Tabelle ein
         //zu Beginn mit 3 Leben und einem Score von 0. is_active wird auf false gesetzt
         await dbQuery(
             connection,
-            'INSERT INTO Game_Player (game_id, player_id, is_active, lives, score) VALUES (?, ?, ?, ?, ?)',
-            [gameId, player.player_id, true, 3, 0]
+            'INSERT INTO Game_Player (game_id, player_id, is_active, lives, score, seat_index) VALUES (?, ?, ?, ?, ?, ?)',
+            [gameId, player.player_id, true, 3, 0, seatIndex]
         );
+
+        seatIndex += 1;
     }
 
     //holt Karten aus der Datenbank
@@ -107,8 +111,8 @@ async function saveGame(connection, game) {
     for (const player of game.players) {
         await dbQuery(
             connection,
-            'UPDATE Game_Player SET lives = ?, score = ?, is_active = ? WHERE game_id = ? AND player_id = ?',
-            [player.lives, player.score || 0, true, game.game_id, player.player_id]
+            'UPDATE Game_Player SET lives = ?, score = ?, is_active = ?, seat_index = ? WHERE game_id = ? AND player_id = ?',
+            [player.lives, player.score || 0, true, player.seatIndex ?? 0, game.game_id, player.player_id]
         );
     }
 
@@ -183,17 +187,18 @@ async function loadGame(connection, gameId) {
     //als Join, damit wir auch den Usernamen der Spieler bekommen
     const playerRows = await dbQuery(
         connection,
-        `SELECT gp.player_id, p.username, gp.lives, gp.score
+        `SELECT gp.player_id, p.username, gp.lives, gp.score, gp.seat_index
          FROM Game_Player gp
          JOIN Player p ON p.player_id = gp.player_id
          WHERE gp.game_id = ?
-         ORDER BY gp.game_player_id ASC`,
+         ORDER BY gp.seat_index ASC, gp.game_player_id ASC`,
         [intGameId]
     );
 
     //erstellt aus den Datenbankzeilen Player-Objekte und speichert sie als Array
     const players = playerRows.map((row) => {
         const player = new Player(row.player_id, row.username);
+        player.seatIndex = Number.isInteger(row.seat_index) ? row.seat_index : 0;
         player.lives = row.lives;
         player.score = row.score || 0;
         return player;

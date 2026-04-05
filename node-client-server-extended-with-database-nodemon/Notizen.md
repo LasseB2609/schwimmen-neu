@@ -30,6 +30,7 @@ ToDos:
     - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den änden/auf dem tisch liegen müssen
     - toInt Methode checken
     -Spieler Reihenfolge synchronisieren (mit Tischpositionen)
+    - Nach Rundenende müssen Karten aufgedeckt werden und 5 Sekunden gewartet werden
 
 
 Warum Socket.io:

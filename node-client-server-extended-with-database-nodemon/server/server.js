@@ -91,6 +91,7 @@ function getGameState(game) {
         players: game.players.map((player) => ({
             player_id: player.player_id,
             username: player.username,
+            seat_index: player.seatIndex ?? null,
             lives: player.lives,
             score: player.score,
             hand: player.hand

@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS Game_Player (
     game_player_id INT AUTO_INCREMENT PRIMARY KEY,
     game_id INT NOT NULL,
     player_id INT NOT NULL,
+    seat_index INT DEFAULT 0,
     socket_id VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     lives INT DEFAULT 3,

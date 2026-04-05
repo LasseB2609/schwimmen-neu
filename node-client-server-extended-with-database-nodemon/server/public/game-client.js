@@ -1,7 +1,6 @@
 //in dieser Datei schickt der Client events an den Server und empfängt die Antworten 
 //für die Spiel-Funktionalität (Spiel erstellen, beitreten, Karte tauschen, etc.)
-//Einfacher Spiel-Client mit Kartenbrett-Rendering.
-//Die IDs aus der bisherigen Test-UI bleiben erhalten, damit bestehende Flows nicht brechen.
+//Spiel-Client mit Kartenbrett-Rendering.
 
 //stellt die Verbindung zum Socket.IO Server her
 const socket = io();
@@ -170,17 +169,33 @@ function renderOpponent(labelEl, cardsEl, player, revealCards) {
     }
 }
 
-function getCircularOpponents(players, myIndex) {
-    if (!Array.isArray(players) || players.length === 0 || myIndex < 0) {
-        return [];
+//ordnet Gegner relativ zum eigenen Sitz im Uhrzeigersinn an
+//offset 1 = links, offset 2 = oben, offset 3 = rechts (bei 4 Spielern)
+function getOpponentSlots(players, myPlayer) {
+    const slots = { top: null, left: null, right: null };
+    //wenn Spieler oder eigener Spieler nicht definiert sind oder es weniger als 2 Spieler gibt, können keine Slots sinnvoll zugeordnet werden
+    if (!Array.isArray(players) || !myPlayer || players.length < 2) {
+        return slots;
     }
 
-    const result = [];
-    for (let offset = 1; offset < players.length; offset += 1) {
-        const idx = (myIndex + offset) % players.length;
-        result.push(players[idx]);
+    const n = players.length;
+    const mySeat = myPlayer.seat_index;
+    for (const player of players) {
+        if (player.player_id === myPlayer.player_id) {
+            continue;
+        }
+
+        const offset = (player.seat_index - mySeat + n) % n;
+        if (offset === 1) {
+            slots.left = player;
+        } else if (offset === 2) {
+            slots.top = player;
+        } else if (offset === 3) {
+            slots.right = player;
+        }
     }
-    return result;
+
+    return slots;
 }
 
 function renderBoard(state) {
@@ -193,9 +208,8 @@ function renderBoard(state) {
 
     const players = Array.isArray(state.players) ? state.players : [];
     const myPlayerId = toInt(playPlayerIdInput.value);
-    const myIndex = players.findIndex((player) => player.player_id === myPlayerId);
-    const myPlayer = myIndex >= 0 ? players[myIndex] : null;
-    const opponents = getCircularOpponents(players, myIndex);
+    const myPlayer = players.find((player) => player.player_id === myPlayerId) || null;
+    const opponentSlots = getOpponentSlots(players, myPlayer);
     const revealOthers = Boolean(state.roundEnded || state.status === 'finished' || state.lastRoundSummary);
 
     roundValue.textContent = state.currentRound ?? '-';
@@ -222,9 +236,9 @@ function renderBoard(state) {
         lastCurrentPlayerId = currentPlayerId;
     }
 
-    renderOpponent(opponentTopLabel, opponentTopCards, opponents[0], revealOthers);
-    renderOpponent(opponentLeftLabel, opponentLeftCards, opponents[1], revealOthers);
-    renderOpponent(opponentRightLabel, opponentRightCards, opponents[2], revealOthers);
+    renderOpponent(opponentTopLabel, opponentTopCards, opponentSlots.top, revealOthers);
+    renderOpponent(opponentLeftLabel, opponentLeftCards, opponentSlots.left, revealOthers);
+    renderOpponent(opponentRightLabel, opponentRightCards, opponentSlots.right, revealOthers);
 
     ownCardsContainer.innerHTML = '';
     const myHand = Array.isArray(myPlayer?.hand) ? myPlayer.hand : [];
