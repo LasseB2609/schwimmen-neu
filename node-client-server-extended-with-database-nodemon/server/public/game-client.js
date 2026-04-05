@@ -45,6 +45,8 @@ const opponentRightCards = document.getElementById('opponentRightCards');
 let selectedHandCardId = null;
 let selectedTableCardIndex = null;
 let lastGameState = null;
+let lastCurrentPlayerId = null;
+let interactionLocked = false;
 
 const pageParams = new URLSearchParams(window.location.search); //holt die Parameter aus der URL
 const queryGameId = Number.parseInt(pageParams.get('gameId'), 10); //holt die gameId aus den Parametern
@@ -74,6 +76,35 @@ function setGameState(state) {
 //Hilfsfunktion, um einen Wert aus dem Input als Integer zu holen
 function toInt(value) {
     return Number.parseInt(value, 10);
+}
+
+//Funktion, die die aktuelle Kartenauswahl zurücksetzt
+function clearSelection() {
+    selectedHandCardId = null;
+    selectedTableCardIndex = null;
+    playHandCardIdInput.value = '';
+    playTableCardIndexInput.value = '';
+}
+
+//Prüft zentral, ob dieser Client gerade Karten auswählen darf.
+function isMyTurnInState(state) {
+    if (!state || interactionLocked) {
+        return false;
+    }
+
+    const players = Array.isArray(state.players) ? state.players : [];
+    const myPlayerId = toInt(playPlayerIdInput.value);
+    const myPlayer = players.find((player) => player.player_id === myPlayerId);
+    const currentPlayer = Number.isInteger(state.currentPlayerIndex) ? players[state.currentPlayerIndex] : null;
+
+    return Boolean(
+        myPlayer
+        && currentPlayer
+        && currentPlayer.player_id === myPlayer.player_id
+        && myPlayer.lives > 0
+        && !state.roundEnded
+        && state.status !== 'finished'
+    );
 }
 
 //TODO: Ab hier muss noch kommentiert werden
@@ -157,6 +188,9 @@ function renderBoard(state) {
         return;
     }
 
+    //Merkt sich den letzten bekannten State, damit Auswahl-Re-Render ohne neues Socket-Event funktioniert.
+    lastGameState = state;
+
     const players = Array.isArray(state.players) ? state.players : [];
     const myPlayerId = toInt(playPlayerIdInput.value);
     const myIndex = players.findIndex((player) => player.player_id === myPlayerId);
@@ -170,11 +204,22 @@ function renderBoard(state) {
         ? `${myPlayer.username || `Player ${myPlayer.player_id}`} | Leben: ${myPlayer.lives}`
         : 'Deine Karten';
 
+    let currentPlayerId = null;
     if (Number.isInteger(state.currentPlayerIndex) && players[state.currentPlayerIndex]) {
         const currentPlayer = players[state.currentPlayerIndex];
+        currentPlayerId = currentPlayer.player_id;
         turnInfo.textContent = `Am Zug: ${currentPlayer.username || `Player ${currentPlayer.player_id}`}`;
     } else {
         turnInfo.textContent = 'Warte auf Spielstatus ...';
+    }
+
+    const isMyTurn = isMyTurnInState(state);
+
+    //Wenn der Zug wechselt, wird die lokale Auswahl zurückgesetzt,
+    //damit keine alte Auswahl beim nächsten Spieler hängen bleibt.
+    if (currentPlayerId !== lastCurrentPlayerId) {
+        clearSelection();
+        lastCurrentPlayerId = currentPlayerId;
     }
 
     renderOpponent(opponentTopLabel, opponentTopCards, opponents[0], revealOthers);
@@ -183,14 +228,20 @@ function renderBoard(state) {
 
     ownCardsContainer.innerHTML = '';
     const myHand = Array.isArray(myPlayer?.hand) ? myPlayer.hand : [];
+    const validHandCardIds = new Set(myHand.map((card) => card.card_id));
+    if (!validHandCardIds.has(selectedHandCardId)) {
+        selectedHandCardId = null;
+        playHandCardIdInput.value = '';
+    }
+
     for (const card of myHand) {
         const isSelected = selectedHandCardId === card.card_id;
         ownCardsContainer.appendChild(createCardElement(cardToText(card), {
-            clickable: true,
+            clickable: Boolean(isMyTurn),
             selected: isSelected,
             onClick: () => {
-                selectedHandCardId = card.card_id;
-                playHandCardIdInput.value = String(card.card_id);
+                selectedHandCardId = selectedHandCardId === card.card_id ? null : card.card_id;
+                playHandCardIdInput.value = selectedHandCardId == null ? '' : String(selectedHandCardId);
                 renderBoard(lastGameState);
             }
         }));
@@ -198,14 +249,24 @@ function renderBoard(state) {
 
     tableCardsContainer.innerHTML = '';
     const tableCards = Array.isArray(state.tableCards) ? state.tableCards : [];
+    if (
+        !Number.isInteger(selectedTableCardIndex)
+        || selectedTableCardIndex < 0
+        || selectedTableCardIndex >= tableCards.length
+        || !tableCards[selectedTableCardIndex]
+    ) {
+        selectedTableCardIndex = null;
+        playTableCardIndexInput.value = '';
+    }
+
     tableCards.forEach((card, index) => {
         const isSelected = selectedTableCardIndex === index;
         tableCardsContainer.appendChild(createCardElement(cardToText(card), {
-            clickable: true,
+            clickable: Boolean(isMyTurn),
             selected: isSelected,
             onClick: () => {
-                selectedTableCardIndex = index;
-                playTableCardIndexInput.value = String(index);
+                selectedTableCardIndex = selectedTableCardIndex === index ? null : index;
+                playTableCardIndexInput.value = selectedTableCardIndex == null ? '' : String(selectedTableCardIndex);
                 renderBoard(lastGameState);
             }
         }));
@@ -234,6 +295,16 @@ joinGameButton.addEventListener('click', () => {
 swapCardButton.addEventListener('click', () => {
     const gameId = toInt(playGameIdInput.value);
     const playerId = toInt(playPlayerIdInput.value);
+
+    const players = Array.isArray(lastGameState?.players) ? lastGameState.players : [];
+    const currentIndex = lastGameState?.currentPlayerIndex;
+    const currentPlayerId = Number.isInteger(currentIndex) && players[currentIndex]
+        ? players[currentIndex].player_id
+        : null;
+    if (currentPlayerId !== playerId) {
+        setStatus('Du bist aktuell nicht am Zug.');
+        return;
+    }
 
     if (!Number.isInteger(selectedHandCardId) || !Number.isInteger(selectedTableCardIndex)) {
         setStatus('Bitte zuerst eine eigene Karte und eine Tischkarte auswählen.');
@@ -296,6 +367,8 @@ socket.on('game-created', (data) => {
 
 //Client empfängt den aktuellen Spielstatus und gibt diesen als GameState aus
 socket.on('game-state', (state) => {
+    interactionLocked = false;
+    lastGameState = state; //speichert den letzten bekannten Spielstatus, damit bei Auswahländerungen ohne neues Server-Event gerendert werden kann
     setStatus('Spielstatus empfangen.');
     setGameState(state);
     renderBoard(state);
@@ -303,17 +376,26 @@ socket.on('game-state', (state) => {
 
 //Client empfängt die Nachricht, dass die Runde nach Klopfen beendet ist
 socket.on('round-ended', (data) => {
+    interactionLocked = true;
+    clearSelection();
     setStatus('Runde beendet.', data);
+    renderBoard(lastGameState);
 });
 
 //Client empfängt den Start einer neuen Runde
 socket.on('round-started', (data) => {
+    interactionLocked = true;
+    clearSelection();
     setStatus('Neue Runde gestartet.', data);
+    renderBoard(lastGameState);
 });
 
 //Client empfängt die Nachricht, dass das Spiel beendet ist
 socket.on('game-finished', (data) => {
+    interactionLocked = true;
+    clearSelection();
     setStatus('Spiel beendet.', data);
+    renderBoard(lastGameState);
 });
 
 //Client empfängt eine Fehlermeldung vom Server und gibt diese als Status aus

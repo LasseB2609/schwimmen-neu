@@ -29,6 +29,7 @@ ToDos:
     - bei Feuer allen anderen ein Leben abziehen
     - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den änden/auf dem tisch liegen müssen
     - toInt Methode checken
+    -Spieler Reihenfolge synchronisieren (mit Tischpositionen)
 
 
 Warum Socket.io:
