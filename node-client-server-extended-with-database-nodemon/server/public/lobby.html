@@ -6,12 +6,13 @@
     <title>Schwimmen Lobby</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/lobby.css">
 </head>
 <body>
-    <main class="container py-4">
-        <h1 class="mb-4">Schwimmen Lobby (ohne Login)</h1>
+    <main class="lobby-shell">
+        <h1 class="lobby-headline">Schwimmen Lobby</h1>
 
-        <div class="card mb-4">
+        <div class="card lobby-card">
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group col-md-4">
@@ -29,7 +30,7 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card lobby-card">
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group col-md-4">
@@ -49,7 +50,7 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div class="card lobby-card">
             <div class="card-body">
                 <h2 class="h5">Aktuelle Lobby</h2>
                 <pre id="currentLobbyOutput" class="mb-3">Noch keiner Lobby beigetreten.</pre>
@@ -60,7 +61,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card lobby-card">
             <div class="card-body">
                 <h2 class="h5">Status</h2>
                 <pre id="statusOutput" class="mb-0">Noch keine Verbindungsausgabe.</pre>

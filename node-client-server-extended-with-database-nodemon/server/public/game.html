@@ -3,93 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schwimmen Socket Test</title>
+    <title>Schwimmen</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/custom.css">
+    <link rel="stylesheet" href="css/game-board.css">
 </head>
 <body>
-    <main class="container py-4">
-        <h1 class="mb-4">Schwimmen Socket Test</h1>
-
-        <div class="card mb-4">
-            <div class="card-body">
-                <h2 class="h5">Spiel erstellen</h2>
+    <main class="game-root">
+        <section class="dev-panel">
+            <details>
+                <summary>Verbindung / Test-Setup</summary>
                 <div class="form-row">
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="player1">Player 1 ID</label>
                         <input id="player1" class="form-control" type="number" value="1">
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label for="player2">Player 2 ID</label>
                         <input id="player2" class="form-control" type="number" value="2">
                     </div>
-                    <div class="form-group col-md-4 d-flex align-items-end">
-                        <button id="createGameButton" class="btn btn-primary btn-block" type="button">Create Game</button>
-                    </div>
                 </div>
-            </div>
-        </div>
+                <button id="createGameButton" class="btn btn-sm btn-primary mb-3" type="button">Spiel erstellen</button>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <h2 class="h5">Spiel beitreten</h2>
-                <div class="form-row">
-                    <div class="form-group col-md-8">
-                        <label for="joinGameId">Game ID</label>
-                        <input id="joinGameId" class="form-control" type="number" placeholder="z. B. 1">
-                    </div>
-                    <div class="form-group col-md-4 d-flex align-items-end">
-                        <button id="joinGameButton" class="btn btn-outline-primary btn-block" type="button">Join Game</button>
-                    </div>
+                <div class="form-group">
+                    <label for="joinGameId">Game ID</label>
+                    <input id="joinGameId" class="form-control" type="number" placeholder="z. B. 1">
                 </div>
-            </div>
-        </div>
+                <button id="joinGameButton" class="btn btn-sm btn-outline-primary mb-3" type="button">Spiel beitreten</button>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <h2 class="h5">Karte tauschen (Test)</h2>
-                <div class="form-row">
-                    <div class="form-group col-md-3">
-                        <label for="playGameId">Game ID</label>
-                        <input id="playGameId" class="form-control" type="number" placeholder="z. B. 1">
-                    </div>
-                    <div class="form-group col-md-3">
-                        <label for="playPlayerId">Player ID</label>
-                        <input id="playPlayerId" class="form-control" type="number" placeholder="z. B. 1">
-                    </div>
-                    <div class="form-group col-md-3">
-                        <label for="playHandCardId">Hand Card ID</label>
-                        <input id="playHandCardId" class="form-control" type="number" placeholder="z. B. 24">
-                    </div>
-                    <div class="form-group col-md-3">
-                        <label for="playTableCardIndex">Table Index (0-2)</label>
-                        <input id="playTableCardIndex" class="form-control" type="number" min="0" max="2" value="0">
-                    </div>
+                <div class="form-group">
+                    <label for="playGameId">Aktive Game ID</label>
+                    <input id="playGameId" class="form-control" type="number" placeholder="z. B. 1">
                 </div>
-                <button id="swapCardButton" class="btn btn-success mr-2" type="button">Swap Card</button>
-                <button id="knockButton" class="btn btn-warning" type="button">Klopfen</button>
-                <button id="passButton" class="btn btn-secondary ml-2" type="button">Passen</button>
-            </div>
-        </div>
+                <div class="form-group mb-2">
+                    <label for="playPlayerId">Deine Player ID</label>
+                    <input id="playPlayerId" class="form-control" type="number" placeholder="z. B. 1">
+                </div>
 
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h2 class="h5">Status</h2>
-                        <pre id="statusOutput" class="mb-0">Noch keine Verbindungsausgabe.</pre>
-                    </div>
+                <!-- Hidden Inputs bleiben erhalten, damit bestehende JS-Logik weiter nutzen kann -->
+                <input id="playHandCardId" type="hidden">
+                <input id="playTableCardIndex" type="hidden">
+            </details>
+        </section>
+
+        <section class="game-table" aria-label="Spielfeld">
+            <header class="table-header">
+                <div>
+                    <strong>Runde:</strong> <span id="roundValue">-</span>
                 </div>
-            </div>
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h2 class="h5">Game State</h2>
-                        <pre id="stateOutput" class="mb-0">Noch kein Spielstatus empfangen.</pre>
-                    </div>
+                <div>
+                    <strong>Status:</strong> <span id="turnInfo">Warte auf Spielstatus ...</span>
                 </div>
+                <div>
+                    <strong>Dein Score:</strong> <span id="myScoreValue">-</span>
+                </div>
+            </header>
+
+            <div class="player-zone top" id="opponentTop">
+                <div class="player-label" id="opponentTopLabel">Gegner oben</div>
+                <div class="card-row" id="opponentTopCards"></div>
             </div>
-        </div>
+
+            <div class="player-zone left" id="opponentLeft">
+                <div class="player-label" id="opponentLeftLabel">Gegner links</div>
+                <div class="card-row vertical" id="opponentLeftCards"></div>
+            </div>
+
+            <div class="player-zone right" id="opponentRight">
+                <div class="player-label" id="opponentRightLabel">Gegner rechts</div>
+                <div class="card-row vertical" id="opponentRightCards"></div>
+            </div>
+
+            <div class="center-zone">
+                <div class="deck-pile" id="deckPile">Deck</div>
+                <div class="card-row table-cards" id="tableCardsContainer"></div>
+            </div>
+
+            <div class="action-bar">
+                <button id="swapCardButton" class="btn btn-light btn-sm" type="button">Ausgewählte tauschen</button>
+                <button id="swapAllButton" class="btn btn-outline-light btn-sm" type="button">Alle Karten tauschen</button>
+                <button id="knockButton" class="btn btn-warning btn-sm" type="button">Klopfen</button>
+                <button id="passButton" class="btn btn-secondary btn-sm" type="button">Passen</button>
+            </div>
+
+            <div class="player-zone bottom" id="ownPlayerZone">
+                <div class="player-label" id="ownPlayerLabel">Deine Karten</div>
+                <div class="card-row" id="ownCardsContainer"></div>
+            </div>
+        </section>
+
+        <aside class="debug-panel">
+            <h2 class="h6 mb-2">Status</h2>
+            <pre id="statusOutput" class="mb-2">Noch keine Verbindungsausgabe.</pre>
+            <h2 class="h6 mb-2">Game State</h2>
+            <pre id="stateOutput" class="mb-0">Noch kein Spielstatus empfangen.</pre>
+        </aside>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>

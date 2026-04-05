@@ -1,0 +1,222 @@
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #0a3f24;
+    color: #f3f6f4;
+}
+
+.game-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dev-panel {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 280px;
+    z-index: 30;
+    background: rgba(12, 31, 20, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.dev-panel summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.game-table {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at center, rgba(20, 95, 52, 0.9) 0%, rgba(8, 52, 28, 0.95) 68%, rgba(5, 32, 18, 1) 100%);
+}
+
+.table-header {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    background: rgba(9, 30, 19, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.player-zone {
+    position: absolute;
+    z-index: 5;
+}
+
+.player-zone.top {
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 360px;
+}
+
+.player-zone.bottom {
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 520px;
+}
+
+.player-zone.left {
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 130px;
+}
+
+.player-zone.right {
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 130px;
+}
+
+.player-label {
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: rgba(241, 246, 243, 0.92);
+}
+
+.card-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    min-height: 96px;
+}
+
+.card-row.vertical {
+    flex-direction: column;
+    min-height: 220px;
+}
+
+.center-zone {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -48%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.deck-pile {
+    width: 72px;
+    height: 96px;
+    border: 2px dashed rgba(255, 255, 255, 0.55);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: rgba(9, 30, 19, 0.45);
+}
+
+.table-cards {
+    min-width: 250px;
+}
+
+.action-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 148px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.game-card {
+    width: 72px;
+    height: 96px;
+    border-radius: 10px;
+    padding: 8px 6px;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    background: #f6f8f6;
+    color: #1a1a1a;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+}
+
+.game-card.clickable {
+    cursor: pointer;
+}
+
+.game-card.back {
+    background: #1b3559;
+    color: #f3f7fd;
+}
+
+.game-card.selected {
+    outline: 3px solid #ffd860;
+    transform: translateY(-3px);
+}
+
+.debug-panel {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 300px;
+    max-height: 42vh;
+    overflow: auto;
+    z-index: 25;
+    background: rgba(12, 31, 20, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.debug-panel pre {
+    color: #dfe8e2;
+    font-size: 11px;
+    background: rgba(4, 20, 12, 0.6);
+    border-radius: 6px;
+    padding: 8px;
+    max-height: 140px;
+    overflow: auto;
+}
+
+@media (max-width: 900px) {
+    .dev-panel,
+    .debug-panel {
+        width: 240px;
+    }
+
+    .player-zone.bottom {
+        width: 400px;
+    }
+
+    .action-bar {
+        bottom: 132px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

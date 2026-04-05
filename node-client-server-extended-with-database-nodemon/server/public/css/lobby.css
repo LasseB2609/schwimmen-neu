@@ -1,0 +1,39 @@
+body {
+    background: #f2f5f3;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #1f2a24;
+}
+
+.lobby-shell {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 16px 40px;
+}
+
+.lobby-headline {
+    margin-bottom: 18px;
+}
+
+.lobby-card {
+    border: 1px solid #d7e2dc;
+    border-radius: 10px;
+    background: #ffffff;
+    margin-bottom: 16px;
+}
+
+.lobby-card .card-body {
+    padding: 14px;
+}
+
+#lobbyList .list-group-item {
+    border-color: #e2ebe6;
+}
+
+pre {
+    background: #f8fbf9;
+    border: 1px solid #e0e9e4;
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 220px;
+    overflow: auto;
+}

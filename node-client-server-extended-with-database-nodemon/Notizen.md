@@ -28,6 +28,7 @@ ToDos:
     - evtl. die ganzen Validierungen und getOrLoadGame, die bei allen Zugarten aufgerufen werden in eine eigene Funktion auslagern
     - bei Feuer allen anderen ein Leben abziehen
     - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den änden/auf dem tisch liegen müssen
+    - toInt Methode checken
 
 
 Warum Socket.io:
