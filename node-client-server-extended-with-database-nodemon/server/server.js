@@ -39,6 +39,7 @@ connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
 // Constants
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
+const ROUND_END_BUFFER_MS = 5000; //5 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
 
 // App
 const app = express();
@@ -155,6 +156,10 @@ async function getOrLoadGame(roomId) {
     return game; //gibt das Spiel zurück
 }
 
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 //wertet eine Runde aus, wenn die Aktion das Rundenende markiert hat
 async function finalizeRoundIfNeeded(game, roomId, actionResult) {
     if (!actionResult?.roundShouldEnd) {
@@ -170,6 +175,9 @@ async function finalizeRoundIfNeeded(game, roomId, actionResult) {
         knockedByPlayerId: game.knockedByPlayerId,
         roundSummary
     });
+
+    // Gibt allen Clients Zeit, die aufgedeckten Karten und Punkte zu sehen.
+    await wait(ROUND_END_BUFFER_MS);
 
     //wenn durch das Rundenende das Spiel zu Ende ist, wird eine Nachricht (mit Sieger und weiteren Infos) an die Clients gesendet
     if (roundSummary.gameIsOver) {
@@ -203,6 +211,9 @@ async function finalizeRoundIfNeeded(game, roomId, actionResult) {
             reason: 'immediate-round-end-on-deal',
             roundSummary: immediateRoundSummary
         }); //informt die Clients über die sofortige Rundenbeendigung
+
+        // Auch bei direkten Rundenenden denselben Sichtbarkeits-Puffer einhalten.
+        await wait(ROUND_END_BUFFER_MS);
 
         //wenn durch das sofortige Rundenende das SPiel zu Ende ist, wird folgendes durchgeführt
         if (immediateRoundSummary.gameIsOver) {
