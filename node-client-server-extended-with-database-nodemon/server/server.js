@@ -39,7 +39,7 @@ connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
 // Constants
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
-const ROUND_END_BUFFER_MS = 5000; //5 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
+const ROUND_END_BUFFER_MS = 8000; //8 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
 
 // App
 const app = express();
