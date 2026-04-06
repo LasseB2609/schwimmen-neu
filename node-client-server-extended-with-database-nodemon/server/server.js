@@ -442,6 +442,36 @@ io.on('connection', (socket) => {
         }
     });
 
+    //wenn der Client eine "swap-all-cards" Nachricht sendet, wird folgende Funktion ausgeführt
+    socket.on('swap-all-cards', async (data) => {
+        try {
+            //holt die benötigten Werte aus den übergebenen Daten
+            const roomId = String(data?.gameId || '');
+            const playerId = Number.parseInt(data?.playerId, 10);
+
+            //validiert, dass alle benötigten Werte gesetzt sind
+            if (!roomId || !Number.isInteger(playerId)) {
+                socket.emit('game-error', { message: 'Ungültige Daten für swap-all-cards.' });
+                return;
+            }
+
+            const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+            if (!game) { //überprüfen, ob das Spiel existiert
+                socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                return;
+            }
+
+            const actionResult = game.swapAllCards(playerId); //tauscht alle Handkarten mit den Tischkarten
+            await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
+            //sendet den aktualisierten Spielstatus an die Clients im Spielraum
+            io.to(roomId).emit('game-state', getGameState(game)); 
+            await finalizeRoundIfNeeded(game, roomId, actionResult);
+        } catch (error) { //Fehlerbehandlung
+            console.error('swap-all-cards failed:', error);
+            socket.emit('game-error', { message: error.message });
+        }
+    });
+
     //wenn der Client eine "knock" Nachricht sendet, wird folgende Funktion ausgeführt
     socket.on('knock', async (data) => {
         try {

@@ -358,21 +358,50 @@ swapCardButton.addEventListener('click', () => {
     socket.emit('swap-card', payload);
 });
 
-//todo: swapAllButton anbinden
+//bei buttonclick wird mit swap-all-cards versucht, alle handkarten mit allen Tischkarten zu tauschen
 swapAllButton.addEventListener('click', () => {
-    setStatus('Alle Karten tauschen ist als UI vorbereitet, aber serverseitig noch nicht als Socket-Event verbunden.');
+    const gameId = toInt(playGameIdEl.value);
+    const playerId = toInt(clientPlayerIdEl.value);
+
+    //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
+    if (!isMyTurnInState(lastGameState)) {
+        setStatus('Du bist aktuell nicht am Zug.');
+        return;
+    }
+
+    const payload = { gameId, playerId };
+    setStatus('Sende swap-all-cards ...', payload);
+    socket.emit('swap-all-cards', payload);
 });
 
 //bei buttonclick wird mit knock signalisiert, dass in dieser Runde jeder weiterer Spieler nur noch einen Zug machen darf
 knockButton.addEventListener('click', () => {
-    const payload = { gameId: toInt(playGameIdEl.value), playerId: toInt(clientPlayerIdEl.value) };
+    const gameId = toInt(playGameIdEl.value);
+    const playerId = toInt(clientPlayerIdEl.value);
+
+    //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
+    if (!isMyTurnInState(lastGameState)) {
+        setStatus('Du bist aktuell nicht am Zug.');
+        return;
+    }
+
+    const payload = { gameId, playerId };
     setStatus('Sende knock ...', payload);
     socket.emit('knock', payload);
 });
 
 //bei buttonclick wird mit pass signalisiert, dass der Spieler passen möchte
 passButton.addEventListener('click', () => {
-    const payload = { gameId: toInt(playGameIdEl.value), playerId: toInt(clientPlayerIdEl.value) };
+    const gameId = toInt(playGameIdEl.value);
+    const playerId = toInt(clientPlayerIdEl.value);
+
+    //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
+    if (!isMyTurnInState(lastGameState)) {
+        setStatus('Du bist aktuell nicht am Zug.');
+        return;
+    }
+
+    const payload = { gameId, playerId };
     setStatus('Sende pass ...', payload);
     socket.emit('pass', payload);
 });

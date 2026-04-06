@@ -10,8 +10,6 @@ damit Projekt funktioniert:
     - dann im Terminal in den ordner node-client-server-extended-with-database-nodemon/server wechseln
     - Befehl "npm install" ausführen
 
-
-
 ToDos:
     - evtl. noch einen sleep einbauen, dass Server nicht versucht mit der Datenbank zu connecten, obwohl diese noch nicht bereit ist
     - Kommentare überprüfen (z.B. bei "Funktionen" in server.js)
@@ -31,6 +29,7 @@ ToDos:
     - toInt Methode checken
     -Spieler Reihenfolge synchronisieren (mit Tischpositionen)
     - Nach Rundenende müssen Karten aufgedeckt werden und 5 Sekunden gewartet werden
+    - Regeln einbauen, falls der Stapel leer ist
 
 
 Warum Socket.io:
