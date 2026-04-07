@@ -4,7 +4,11 @@
 
 const express = require('express');
 const http = require('http');
+const path = require('path'); //für Dateipfade
+const crypto = require('crypto'); //für Passwort-Hashing
+const { promisify } = require('util'); //dient dazu, die scrypt-Funktion von crypto in eine Promise-basierte Funktion umzuwandeln
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
 const { Server } = require('socket.io'); //nimmt die Server-Klasse aus dem Socket.IO Modul
 const gameState = require('./game/gameState'); //für Funktionen wie createGame, saveGame, loadGame
 
@@ -40,6 +44,9 @@ connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
 const ROUND_END_BUFFER_MS = 8000; //8 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-change-me'; //setzt den geheimen Schlüssel für die Session Cookies ("dev-only-change-me" ist ein Fallback)
+const SESSION_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 12; //legt fest, wie lange der Session-Cookie gültig bleibt (hier 12h)
+const scryptAsync = promisify(crypto.scrypt); //macht Passwort-Hashing(crypto.scrypt) einfacher mit await
 
 // App
 const app = express();
@@ -51,6 +58,20 @@ let nextLobbyId = 1;
 // Features for JSON Body
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Konfiguriert die Session-Middleware und hängt sie an die Express-App
+const sessionMiddleware = session({
+    secret: SESSION_SECRET, //geheimer Schlüssel für die Session-Cookies
+    resave: false, //Session wird nicht bei jedem Request neu gespeichert
+    saveUninitialized: false, //Session wird nicht gespeichert, wenn sie nicht initialisiert ist
+    cookie: {
+        httpOnly: true, //Cookies sind nicht durch JavaScript im browser auslesbar
+        sameSite: 'lax', //Cookies werden bei Anfragen von anderen Seiten nicht gesendet, außer bei Navigationen (z.B. Link-Klicks), um CSRF-Angriffe zu erschweren
+        secure: false, //Cookie darf auch über http gesendet werden (todo: überprüfen ob vor Abgabe noch geändert werden sollte)
+        maxAge: SESSION_COOKIE_MAX_AGE_MS //Ablaufzeit (12h)
+    } //konfiguriert die Eigenschaften der Session-Cookies
+});
+app.use(sessionMiddleware);
 
 // Professional rate limiter middleware (DoS protection).
 // For teaching/lab tests, defaults are intentionally very high to avoid blocking students.
@@ -64,16 +85,173 @@ const limiter = rateLimit({
 // Apply limiter to all routes.
 app.use(limiter);
 
-// Entrypoint - call it with: http://localhost:8080/ -> redirect you to http://localhost:8080/static
+// Promise-Helfer für SQL-Abfragen (todo: evtl. mit anderem dbquery zusammenlegen)
+function dbQuery(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        connection.query(sql, params, (error, results) => {
+            if (error) return reject(error);
+            resolve(results);
+        });
+    });
+}
+
+// Erstellt einen scrypt-basierten Passwort-Hash
+async function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex'); //Zufallswert, damit gleiche Passwörter nicht gleiche hashes erzeugen
+    const derivedKey = await scryptAsync(password, salt, 64); //hashed das Passwort mit scrypt
+    return `scrypt$${salt}$${Buffer.from(derivedKey).toString('hex')}`; //speichert
+}
+
+// Vergleicht Klartextpasswort mit gespeichertem Hash = Verifizierung des Passworts
+async function verifyPassword(password, storedHash) {
+    //Überprüft, ob der gespeicherte Hash gültig ist
+    if (!storedHash || typeof storedHash !== 'string') {
+        return false;
+    }
+
+    const [algorithm, salt, hashHex] = storedHash.split('$'); //zerlegt den Hash in 3 Teile
+    if (algorithm !== 'scrypt' || !salt || !hashHex) { //überprüft, ob das Format korrekt ist
+        return false;
+    }
+
+    const expected = Buffer.from(hashHex, 'hex'); //wandelt den gespeicherten Hash-Teil (der aus der DB) zurück in Binärdaten
+    const actual = Buffer.from(await scryptAsync(password, salt, expected.length)); //berechnet aus dem eingegebenen Passwort plus dem gespeicherten Salt einen neuen Hash
+    if (expected.length !== actual.length) { //überprüft, ob die Längen der beiden Hashes gleich sind (da folgend gleiche Länge erwartet wird)
+        return false;
+    }
+
+    return crypto.timingSafeEqual(expected, actual); //vregleicht beide Hashes
+}
+
+// Guard für HTML-Seiten
+// verhindert den Zugriff auf die Lobby- und Spiel-Seite, wenn der User nicht eingeloggt ist
+function requireAuthPage(req, res, next) {
+    if (req.session?.user?.playerId) { //überprüft, ob es eine gültige Session gibt
+        return next(); //Seite kann ausgegebn werden
+    }
+    return res.redirect('/static/index.html'); //falls User nicht eingeloggt ist, wird er zur index geleitet
+}
+
+// Guard für API-Endpunkte (also z.B. beim Seitenstart)
+// verhindert den Zugriff auf API-Endpunkte, wenn der User nicht eingeloggt ist
+function requireAuthApi(req, res, next) {
+    if (req.session?.user?.playerId) { //überprüft, ob es eine gültige Session gibt
+        return next(); //API-Endpunkt kann ausgeführt werden
+    }
+    return res.status(401).json({ message: 'Nicht angemeldet.' }); //falls User nicht eingeloggt ist, wird dies als Fehler zurückgegeben
+}
+
+// Startpunkt: immer auf Login/Startseite.
 app.get('/', (req, res) => {
-    console.log("Got a request and redirect it to the static page");
-    // redirect will send the client to another path / route. In this case to the static route.
-    res.redirect('/static');
+    console.log("Got a request and redirect it to index page");
+    res.redirect('/static/index.html');
 });
 
-//evtl. einfach entfernen
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+
+
+// Authentifizierung: prüft Login-Session und liefert aktuellen Nutzer
+app.get('/auth/me', requireAuthApi, async (req, res) => {
+    const playerId = req.session.user.playerId; //holt die playerId aus der Session
+    const rows = await dbQuery('SELECT player_id, username FROM Player WHERE player_id = ? LIMIT 1', [playerId]); //holt die Daten des Users aus der DB
+    if (rows.length === 0) { //wenn der User nicht gefunden wird, wird die Session gelöscht und ein Fehler zurückgegeben
+        req.session.destroy(() => {});
+        return res.status(401).json({ message: 'Session ungültig.' });
+    }
+    return res.json({ playerId: rows[0].player_id, username: rows[0].username }); //falls User gefunden wurde, werden die Daten zurückgegeben
+});
+
+// Registrierung mit Passwort-Hash und direktem Login danach
+app.post('/auth/register', async (req, res) => {
+    try {
+        const username = String(req.body?.username || '').trim();
+        const password = String(req.body?.password || '');
+
+        if (username.length < 3 || username.length > 100) { //überprüft Länge des Nutzernamens
+            return res.status(400).json({ message: 'Username muss 3-100 Zeichen lang sein.' });
+        }
+        if (password.length < 6) { //überprüft Länge des Passworts
+            return res.status(400).json({ message: 'Passwort muss mindestens 6 Zeichen haben.' });
+        }
+
+        //überprüft, ob es den Nutzernamen bereits gibt
+        const existing = await dbQuery('SELECT player_id FROM Player WHERE username = ? LIMIT 1', [username]);
+        if (existing.length > 0) {
+            return res.status(409).json({ message: 'Username ist bereits vergeben.' });
+        }
+
+        //hashed das Passwort und speichert den User mit seinen Daten in der Datenbakn
+        const passwordHash = await hashPassword(password);
+        const insertResult = await dbQuery(
+            'INSERT INTO Player (username, password_hash) VALUES (?, ?)',
+            [username, passwordHash]
+        );
+
+        //setzt die Session-Daten, damit der User direkt nach der Registrierung eingeloggt ist
+        req.session.user = { playerId: insertResult.insertId, username };
+        return res.status(201).json({ playerId: insertResult.insertId, username });
+    } catch (error) { //Fehlerbehandlung
+        console.error('register failed:', error);
+        return res.status(500).json({ message: 'Registrierung fehlgeschlagen.' });
+    }
+});
+
+// Login mit Username und Passwort
+app.post('/auth/login', async (req, res) => {
+    try {
+        const username = String(req.body?.username || '').trim(); //holt den Nutzernamen aus den eingegebenen Daten
+        const password = String(req.body?.password || ''); //holt das Passwort aus den eingegebenen Daten
+
+        if (!username || !password) { //prüft, ob username und Passwort gesetzt sind
+            return res.status(400).json({ message: 'Username und Passwort sind erforderlich.' });
+        }
+
+        const rows = await dbQuery(
+            'SELECT player_id, username, password_hash FROM Player WHERE username = ? LIMIT 1',
+            [username]
+        ); //sucht den Nutzer in der DB
+        if (rows.length === 0) { //Fehlerbehandlung, falls der Nutzer nicht gefunden wurde
+            return res.status(401).json({ message: 'Login fehlgeschlagen.' });
+        }
+
+        const player = rows[0]; //speichert die playerId
+        const passwordValid = await verifyPassword(password, player.password_hash); //verifiziert, ob das eingetragene Passwort mit dem gespeicherten übereinstimmt
+        if (!passwordValid) { //Fehlerbehandlung, falls Passwort falsch ist
+            return res.status(401).json({ message: 'Login fehlgeschlagen.' });
+        }
+
+        //speichert die session-Daten
+        req.session.user = { playerId: player.player_id, username: player.username }; 
+        return res.json({ playerId: player.player_id, username: player.username });
+    } catch (error) { //Fehlerbehandlung
+        console.error('login failed:', error);
+        return res.status(500).json({ message: 'Login fehlgeschlagen.' });
+    }
+});
+
+// Logout löscht Session + Cookie
+app.post('/auth/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie('connect.sid');
+        res.json({ ok: true });
+    });
+});
+
+// Index ist offen (d.h. auch ohne Login erreichbar)
+app.get('/static/index.html', (req, res) => {
+    if (req.session?.user?.playerId) { //wenn der User bereits eingeloggt ist, wird er direkt zur Lobby weitergeleitet
+        return res.redirect('/static/lobby.html');
+    }
+    return res.sendFile(path.join(__dirname, 'public', 'index.html')); //sonst wird die index.html ausgegeben
+});
+
+// Lobby ist geschützt, d.h. nur mit gültiger Session erreichbar
+app.get('/static/lobby.html', requireAuthPage, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'lobby.html'));
+});
+
+// Game ist geschützt, d.h. nur mit gültiger Session erreichbar
+app.get('/static/game.html', requireAuthPage, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
 
 // statische Dateien werden aus dem Public Ordner bereitgestellt
@@ -227,6 +405,22 @@ async function finalizeRoundIfNeeded(game, roomId, actionResult) {
     }
 }
 
+// hängt die SessionMiddleware an die Socket.IO-Verbindungen
+io.engine.use(sessionMiddleware);
+
+// Blockiert Socket-Verbindungen ohne gültige Login-Session
+io.use((socket, next) => {
+    const user = socket.request?.session?.user; //liest den User aus der Session der Socket-Verbindung aus
+    if (!user || !Number.isInteger(user.playerId)) { //wenn kein gültiger User in der Session gefunden wird, wird die Verbindung mit einem Fehler abgelehnt
+        return next(new Error('unauthorized'));
+    }
+
+    //speichert die playerId und den username im Socket-Datenobjekt
+    socket.data.playerId = user.playerId;
+    socket.data.username = user.username;
+    return next(); //erlaubt die Verbindung, wenn eine gültige Session gefunden wurde
+});
+
 //wenn sich ein Client mit Socket.io verbindet, wird die folgende Funktion ausgeführt
 io.on('connection', (socket) => {
     console.log('Socket connected:', socket.id); //Konsolenausgabe der Socket-ID des verbundenen Clients
@@ -241,7 +435,7 @@ io.on('connection', (socket) => {
 
     //wenn der Client eine "lobby-create" Nachricht sendet, wird folgende Funktion ausgeführt
     socket.on('lobby-create', (data) => {
-        const playerId = Number.parseInt(data?.playerId, 10); //speichert die playerId aus den übergebenen Daten als Int ab
+        const playerId = socket.data.playerId; //speichert die playerId aus der socket-Verbindung
         const lobbyName = String(data?.lobbyName || '').trim() || 'Neue Lobby'; //speichert den LobbyNamen als String ab, falls nicht vorhanden, wird "Neue Lobby" verwendet
 
         //überprüft, ob die playerId gültig ist
@@ -272,7 +466,7 @@ io.on('connection', (socket) => {
 
     //wenn der Client eine "lobby-join" Nachricht sendet, wird folgende Funktion ausgeführt
     socket.on('lobby-join', (data) => {
-        const playerId = Number.parseInt(data?.playerId, 10); //speichert die playerId aus den übergebenen Daten als Int ab
+        const playerId = socket.data.playerId; //speichert die playerId aus der Socket Verbindung
         const lobbyId = String(data?.lobbyId || ''); //speichert die lobbyId aus den übergebenen Daten als String ab
         const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die der Client joinen möchte
         const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
@@ -300,7 +494,7 @@ io.on('connection', (socket) => {
 
     //wenn der Client eine "lobby-leave" Nachricht sendet, wird folgende Funktion ausgeführt
     socket.on('lobby-leave', (data) => {
-        const playerId = Number.parseInt(data?.playerId ?? socket.data.playerId, 10); //speichert die playerId aus den übergebenen Daten oder aus den Socket-Daten als Int
+        const playerId = socket.data.playerId; //speichert die plyaerId aus der socket-Verbindung
         const lobbyId = String(data?.lobbyId ?? socket.data.lobbyId ?? ''); //speichert die lobbyId aus den übergebenen Daten oder aus den Socket-Daten als String
         const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die der Client verlassen möchte
         const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
@@ -325,7 +519,7 @@ io.on('connection', (socket) => {
     socket.on('lobby-start-game', async (data) => {
         try {
             const lobbyId = String(data?.lobbyId || socket.data.lobbyId || ''); //speichert die LobbyId aus den übergebenen Daten oder aus den Socket-Daten als String ab
-            const playerId = Number.parseInt(data?.playerId ?? socket.data.playerId, 10); //speichert die playerId aus den übergebenen Daten oder aus den Socket-Daten als Int
+            const playerId = socket.data.playerId; //speichert die playerId aus der Socket-Verbindung
             const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die das Spiel starten möchte
             const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
             //überprüft, ob die Lobby existiert und den Status "waiting" hat 
@@ -394,10 +588,18 @@ io.on('connection', (socket) => {
     socket.on('join-game', async (data) => {
         const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
         const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+        const playerId = socket.data.playerId; //holt die playerId aus der Socket-Verbindung
 
         
         if (!game) { //wird ausgeführt falls das Spiel nicht existiert/nicht gefunden wurde
             socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+            return;
+        }
+
+        //Nur Spieler im Spiel dürfen dem Spielraum beitreten
+        const isPlayerInGame = game.players.some((player) => player.player_id === playerId);
+        if (!isPlayerInGame) {
+            socket.emit('game-error', { message: 'Du bist kein Spieler in diesem Spiel.' });
             return;
         }
 
@@ -410,7 +612,7 @@ io.on('connection', (socket) => {
         try {
             //holt die benötigten Werte aus den übergebenen Daten
             const roomId = String(data?.gameId || '');
-            const playerId = Number.parseInt(data?.playerId, 10);
+            const playerId = socket.data.playerId;
             const handCardId = Number.parseInt(data?.handCardId, 10);
             const tableCardIndex = Number.parseInt(data?.tableCardIndex, 10);
 
@@ -447,7 +649,7 @@ io.on('connection', (socket) => {
         try {
             //holt die benötigten Werte aus den übergebenen Daten
             const roomId = String(data?.gameId || '');
-            const playerId = Number.parseInt(data?.playerId, 10);
+            const playerId = socket.data.playerId; //holt die playerId aus der Socket-Verbindung
 
             //validiert, dass alle benötigten Werte gesetzt sind
             if (!roomId || !Number.isInteger(playerId)) {
@@ -476,7 +678,7 @@ io.on('connection', (socket) => {
     socket.on('knock', async (data) => {
         try {
             const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
-            const playerId = Number.parseInt(data?.playerId, 10); //holt die playerId aus den übergebenen Daten und speichert sie als Zahl ab
+            const playerId = socket.data.playerId; //holt die playerId aus der Socket-Verbindung
 
             const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
             
@@ -501,7 +703,7 @@ io.on('connection', (socket) => {
     socket.on('pass', async (data) => {
         try {
             const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
-            const playerId = Number.parseInt(data?.playerId, 10); //holt die playerId aus den übergebenen Daten und speichert sie als Zahl ab
+            const playerId = socket.data.playerId; //holt die playerId aus der socket-Verbindung
 
             if (!roomId || !Number.isInteger(playerId)) { //validiert, dass die benötigten Werte gesetzt sind
                 socket.emit('game-error', { message: 'Ungültige Daten für pass.' });

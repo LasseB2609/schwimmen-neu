@@ -1,11 +1,10 @@
 //in dieser Datei schickt der Client events an den Server und empfängt die Antworten für die Lobby-Funktionalität 
 // (Lobby erstellen, beitreten, Liste aktualisieren, Spiel starten, etc.)
 
-//stellt die Verbindung zum Socket.IO Server her
-const socket = io();
+//stellt die Verbindung zum Socket.IO Server her (aber verbindet erst später, wenn die Session-Daten geladen wurden)
+const socket = io({ autoConnect: false });
 
 // holt die HTML-Elemente, die für die Interaktion mit der Seite benötigt werden
-const playerIdInput = document.getElementById('playerIdInput');
 const lobbyNameInput = document.getElementById('lobbyNameInput');
 const createLobbyButton = document.getElementById('createLobbyButton');
 const joinLobbyIdInput = document.getElementById('joinLobbyIdInput');
@@ -16,8 +15,11 @@ const currentLobbyOutput = document.getElementById('currentLobbyOutput');
 const startGameButton = document.getElementById('startGameButton');
 const leaveLobbyButton = document.getElementById('leaveLobbyButton');
 const statusOutput = document.getElementById('statusOutput');
+const logoutButton = document.getElementById('logoutButton');
+const sessionUsername = document.getElementById('sessionUsername');
 
 let currentLobby = null;
+let me = null; //speichert die Session-User-Daten
 
 //gibt den Status aus (zum debuggen)
 function setStatus(message, payload) {
@@ -28,7 +30,7 @@ function setStatus(message, payload) {
 
 //Hilfsfunktion, um die playerId aus dem Input als Integer zu holen
 function getPlayerId() {
-    return Number.parseInt(playerIdInput.value, 10);
+    return Number.parseInt(me?.playerId, 10);
 }
 
 //setzt die aktuelle Lobby und gibt sie im currentLobbyOutput aus (zum debuggen)
@@ -66,8 +68,7 @@ function renderLobbyList(lobbies) {
         button.className = 'btn btn-sm btn-outline-primary';
         button.textContent = 'Beitreten';
         button.addEventListener('click', () => { // beim klick
-            const playerId = getPlayerId(); //holt die playerId aus dem Input-Feld
-            socket.emit('lobby-join', { lobbyId: lobby.lobbyId, playerId }); //schickt die lobby-join Nachricht mit der lobbyId und playerId an den Server
+            socket.emit('lobby-join', { lobbyId: lobby.lobbyId }); //schickt die lobby-join Nachricht mit der lobbyId an den Server
         });
 
         //fügt die html-Elemente zusammen und hängt sie an die Liste der Lobbys an
@@ -79,18 +80,16 @@ function renderLobbyList(lobbies) {
 
 //eventListener für den Knopf zur Lobbyerstlelung
 createLobbyButton.addEventListener('click', () => {
-    const playerId = getPlayerId(); //holt die playerId aus dem Input-Feld
     const lobbyName = String(lobbyNameInput.value || '').trim(); //holt den Namen der Lobby aus dem Input-Feld
-    socket.emit('lobby-create', { playerId, lobbyName }); //schickt die lobby-create Nachricht mit der playerId und dem Lobby-Namen an den Server
-    setStatus('Sende lobby-create ...', { playerId, lobbyName }); //gibt den Status aus, dass die lobby-create Nachricht gesendet wird (zum debuggen)
+    socket.emit('lobby-create', { lobbyName }); //schickt die lobby-create Nachricht mit dem Lobby-Namen an den Server
+    setStatus('Sende lobby-create ...', { lobbyName }); //gibt den Status aus, dass die lobby-create Nachricht gesendet wird (zum debuggen)
 });
 
 //eventlistener für den Knopf zum Beitreten einer Lobby
 joinLobbyButton.addEventListener('click', () => {
-    const playerId = getPlayerId(); //holt die playerId aus dem Input-Feld
     const lobbyId = String(joinLobbyIdInput.value || ''); //holt die lobbyId aus dem Input-Feld, in die der Spieler beitreten möchte
-    socket.emit('lobby-join', { lobbyId, playerId }); //schickt die lobby-join Nachricht mit der lobbyId und playerId an den Server
-    setStatus('Sende lobby-join ...', { lobbyId, playerId }); //gibt den Status aus, dass die lobby-join Nachricht gesendet wird (zum debuggen)
+    socket.emit('lobby-join', { lobbyId }); //schickt die lobby-join Nachricht mit der lobbyId an den Server
+    setStatus('Sende lobby-join ...', { lobbyId }); //gibt den Status aus, dass die lobby-join Nachricht gesendet wird (zum debuggen)
 });
 
 //eventlistener für den Knopf zum Aktualisieren der Lobby-Liste
@@ -105,9 +104,8 @@ startGameButton.addEventListener('click', () => {
         setStatus('Keine aktive Lobby ausgewählt.');
         return;
     }
-    const playerId = getPlayerId(); //holt die playerId aus dem Input-Feld
-    socket.emit('lobby-start-game', { lobbyId: currentLobby.lobbyId, playerId }); //schickt die lobby-start-game Nachricht mit der lobbyId und playerId an den Server
-    setStatus('Sende lobby-start-game ...', { lobbyId: currentLobby.lobbyId, playerId }); //gibt den Status aus, dass die lobby-start-game Nachricht gesendet wird (zum debuggen)
+    socket.emit('lobby-start-game', { lobbyId: currentLobby.lobbyId }); //schickt die lobby-start-game Nachricht mit der lobbyId an den Server
+    setStatus('Sende lobby-start-game ...', { lobbyId: currentLobby.lobbyId }); //gibt den Status aus, dass die lobby-start-game Nachricht gesendet wird (zum debuggen)
 });
 
 //eventlistener für den Knopf zum Verlassen der Lobby
@@ -115,10 +113,15 @@ leaveLobbyButton.addEventListener('click', () => {
     if (!currentLobby) { //falls keine aktuelle Lobby ausgewählt ist, wird die Funktion verlassen
         return;
     }
-    const playerId = getPlayerId(); //holt die playerId aus dem Input-Feld
-    socket.emit('lobby-leave', { lobbyId: currentLobby.lobbyId, playerId }); //schickt die lobby-leave Nachricht mit der lobbyId und playerId an den Server
-    setStatus('Sende lobby-leave ...', { lobbyId: currentLobby.lobbyId, playerId }); //gibt den Status aus, dass die lobby-leave Nachricht gesendet wird (zum debuggen)
+    socket.emit('lobby-leave', { lobbyId: currentLobby.lobbyId }); //schickt die lobby-leave Nachricht mit der lobbyId an den Server
+    setStatus('Sende lobby-leave ...', { lobbyId: currentLobby.lobbyId }); //gibt den Status aus, dass die lobby-leave Nachricht gesendet wird (zum debuggen)
     setCurrentLobby(null);
+});
+
+//eventlistener für den Logout-Knopf
+logoutButton.addEventListener('click', async () => {
+    await fetch('/auth/logout', { method: 'POST' });
+    window.location.href = 'index.html'; //Weiterleitung an index.html
 });
 
 
@@ -158,3 +161,20 @@ socket.on('lobby-game-started', (data) => {
 socket.on('game-error', (error) => {
     setStatus('Serverfehler empfangen.', error);
 });
+
+//Lädt den Session-User und verbindet erst dann Socket.IO.
+async function init() {
+    //prüft, ob es zu dem Cookie mit der Session-ID eine gültige Session gibt
+    const response = await fetch('/auth/me');
+    if (!response.ok) { //keine gültige Session, Weiterleitung zur Login-Seite
+        window.location.href = 'index.html';
+        return;
+    }
+
+    //speichert die Session-User-Daten und zeigt den Benutzernamen in der Lobby an
+    me = await response.json();
+    sessionUsername.textContent = `${me.username} (#${me.playerId})`;
+    socket.connect(); //verbindet den Socket
+}
+
+init();

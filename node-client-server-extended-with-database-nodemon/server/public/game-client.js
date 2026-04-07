@@ -2,8 +2,8 @@
 //für die Spiel-Funktionalität (Spiel erstellen, beitreten, Karte tauschen, etc.)
 //Spiel-Client mit Kartenbrett-Rendering.
 
-//stellt die Verbindung zum Socket.IO Server her
-const socket = io();
+//Socket wird erst nach Session-Prüfung verbunden.
+const socket = io({ autoConnect: false });
 
 //holt die HTML-Elemente, die für die Interaktion mit der Seite benötigt werden
 const createGameButton = document.getElementById('createGameButton');
@@ -56,8 +56,29 @@ if (Number.isInteger(queryGameId)) {
     joinGameIdEl.value = queryGameId;
     playGameIdEl.value = queryGameId;
 }
-if (Number.isInteger(queryPlayerId)) {
-    clientPlayerIdEl.value = queryPlayerId;
+
+//Lädt die Session und setzt den eigenen Player für die Spiellogik.
+async function loadSessionUser() {
+    //prüft, ob es zu dem Cookie mit der Session-ID eine gültige Session gibt
+    const response = await fetch('/auth/me');
+    if (!response.ok) { //keine gültige Session, Weiterleitung zur Login-Seite
+        window.location.href = 'index.html';
+        return null;
+    }
+
+    //speichert die Session-User-Daten und trägt die playerId in das entsprechende Input-Feld ein
+    const me = await response.json();
+    clientPlayerIdEl.value = String(me.playerId);
+
+    //Debug-Hinweis, falls query-Player nicht zur Session passt.
+    if (Number.isInteger(queryPlayerId) && queryPlayerId !== me.playerId) {
+        setStatus('Hinweis: Query-Player wird ignoriert, Session-Player wird verwendet.', {
+            queryPlayerId,
+            sessionPlayerId: me.playerId
+        });
+    }
+
+    return me;
 }
 
 //gibt den Status aus (zum debuggen)
@@ -467,3 +488,14 @@ socket.on('game-finished', (data) => {
 socket.on('game-error', (error) => {
     setStatus('Serverfehler empfangen.', error);
 });
+
+//lädt die Session des Users und verbindet danach den Socket.
+async function init() {
+    const me = await loadSessionUser();
+    if (!me) {
+        return;
+    }
+    socket.connect();
+}
+
+init();

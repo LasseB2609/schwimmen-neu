@@ -24,12 +24,17 @@ ToDos:
     - es können aktuell (02.04) noch Games erstellt werden, auch wenn eine Fehlermeldung kommt, dass die gegebenen Spieler nicht existieren
     - eigene Round Relation?
     - evtl. die ganzen Validierungen und getOrLoadGame, die bei allen Zugarten aufgerufen werden in eine eigene Funktion auslagern
-    - bei Feuer allen anderen ein Leben abziehen
     - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den änden/auf dem tisch liegen müssen
     - toInt Methode checken
-    -Spieler Reihenfolge synchronisieren (mit Tischpositionen)
-    - Nach Rundenende müssen Karten aufgedeckt werden und 5 Sekunden gewartet werden
     - Regeln einbauen, falls der Stapel leer ist
+    - bei Spielende zurück in die Lobby
+    -mehrere Server und Lastverteilung (für Lobby und Spiel)
+    -> dann auch dieses reverseproxy
+    -> auch online?
+    - zu lange dateien aufteilen, zb dort wo oben tausend html elemente geholt werden
+    -die doppelten dbquery zusammenlegen
+    - eigene Score Anzeige dauerhaft aktualisieren lassen
+    - weniger Kommentare
 
 
 Warum Socket.io:

@@ -11,19 +11,16 @@
 <body>
     <main class="lobby-shell">
         <h1 class="lobby-headline">Schwimmen Lobby</h1>
+        <p class="text-center text-muted mb-3">Angemeldet als: <strong id="sessionUsername">...</strong></p>
 
         <div class="card lobby-card">
             <div class="card-body">
                 <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label for="playerIdInput">Player ID</label>
-                        <input id="playerIdInput" class="form-control" type="number" value="1">
-                    </div>
-                    <div class="form-group col-md-5">
+                    <div class="form-group col-md-8">
                         <label for="lobbyNameInput">Lobby Name</label>
                         <input id="lobbyNameInput" class="form-control" type="text" placeholder="z. B. Meine Lobby">
                     </div>
-                    <div class="form-group col-md-3 d-flex align-items-end">
+                    <div class="form-group col-md-4 d-flex align-items-end">
                         <button id="createLobbyButton" class="btn btn-primary btn-block" type="button">Lobby erstellen</button>
                     </div>
                 </div>
@@ -65,6 +62,7 @@
             <div class="card-body">
                 <h2 class="h5">Status</h2>
                 <pre id="statusOutput" class="mb-0">Noch keine Verbindungsausgabe.</pre>
+                <button id="logoutButton" class="btn btn-outline-danger mt-3" type="button">Logout</button>
             </div>
         </div>
     </main>
