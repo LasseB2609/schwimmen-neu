@@ -6,15 +6,15 @@ services:
       - "8080:8080"
     restart: always
     environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: examplepass
-      MYSQL_HOSTNAME: meinecooledb
+      MYSQL_DATABASE: schwimmen_db
+      MYSQL_USER: schwimmen_user
+      MYSQL_PASSWORD: schwimmen_pass
+      MYSQL_HOSTNAME: schwimmen_db
       REDIS_URL: redis://redis:6379
       RATE_LIMIT_WINDOW_MS: 60000
       RATE_LIMIT_MAX: 10000
     depends_on:
-      - meinecooledb
+      - schwimmen_db
       - redis
     # Overwrite to nodemon only for DEV! -L is legacy mode, required for Windows / Mac integration.
     command: nodemon -L server.js
@@ -22,15 +22,15 @@ services:
     volumes:
       # :Z may needs to be removed, if this does not work
       - ./server:/usr/src/app:Z
-  meinecooledb:
+  schwimmen_db:
     # Use of a modified datbase in 'db'-folder.
     # See README.md for more information.
     build: db
     restart: always
     environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: examplepass
+      MYSQL_DATABASE: schwimmen_db
+      MYSQL_USER: schwimmen_user
+      MYSQL_PASSWORD: schwimmen_pass
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -38,7 +38,7 @@ services:
     ports:
       - 8085:80
     environment:
-      PMA_HOST: meinecooledb
+      PMA_HOST: schwimmen_db
   redis:
     image: redis:7-alpine
     restart: always

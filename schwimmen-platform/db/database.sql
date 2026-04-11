@@ -2,7 +2,7 @@
 -- version 5.0.2
 -- https://www.phpmyadmin.net/
 --
--- Host: meinecooledb
+-- Host: schwimmen_db
 -- Generation Time: Apr 09, 2020 at 12:19 PM
 -- Server version: 10.4.12-MariaDB-1:10.4.12+maria~bionic
 -- PHP Version: 7.4.4

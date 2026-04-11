@@ -29,8 +29,8 @@ var dbInfo = {
 var connection = mysql.createPool(dbInfo);
 console.log("Conecting to database...");
 //Einfacher Retry-Mechanismus beim Start: DB ist im Compose-Verbund oft erst nach dem Server bereit.
-const DB_CONNECT_MAX_RETRIES = Number.parseInt(process.env.DB_CONNECT_MAX_RETRIES || '30', 10);
-const DB_CONNECT_RETRY_DELAY_MS = Number.parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS || '2000', 10);
+const DB_CONNECT_MAX_RETRIES = Number.parseInt(process.env.DB_CONNECT_MAX_RETRIES || '30', 10); //Maximale Anzahl von Verbindungsversuchen zur Datenbank, bevor aufgegeben wird (hier 30 Versuche)
+const DB_CONNECT_RETRY_DELAY_MS = Number.parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS || '2000', 10); //Verzögerung zwischen den Verbindungsversuchen (hier 2000ms)
 
 //Check database connection
 function checkDatabaseConnection(attempt = 1) {
@@ -38,13 +38,13 @@ function checkDatabaseConnection(attempt = 1) {
         connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
             if (error) {
                 if (attempt >= DB_CONNECT_MAX_RETRIES) {
-                    return reject(error);
+                    return reject(error); //mehr als max Anzahl an Versuchen durchgeführt, gebe Fehler zurück
                 }
 
                 console.warn(`Database not ready (attempt ${attempt}/${DB_CONNECT_MAX_RETRIES}). Retry in ${DB_CONNECT_RETRY_DELAY_MS}ms...`);
                 return setTimeout(() => {
                     checkDatabaseConnection(attempt + 1).then(resolve).catch(reject);
-                }, DB_CONNECT_RETRY_DELAY_MS);
+                }, DB_CONNECT_RETRY_DELAY_MS); //rekursiver Aufruf der Funktion
             }
 
             // check the solution - should be 2
@@ -136,7 +136,7 @@ registerGameSocketHandlers(io, {
     ROUND_END_BUFFER_MS
 });
 
-// 9) Server starten
+// 9) Server starten (wenn Datenbankverbindung erfolgreich)
 checkDatabaseConnection()
     .then(() => {
         server.listen(PORT, HOST, () => {
@@ -145,6 +145,6 @@ checkDatabaseConnection()
     })
     .catch((error) => {
         console.error('Database connection failed after retries:', error);
-        process.exit(5); // <- exit application with error code e.g. 5
+        process.exit(5); // exit application with error code 5 
     });
 

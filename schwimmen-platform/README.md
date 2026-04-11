@@ -76,7 +76,7 @@ server_1        | [nodemon] restarting due to changes...
 server_1        | [nodemon] starting `node server.js`
 ```
 
-Dabei wird auch im Log ausgegeben, wenn die `database.sql` geladen wird: `meinecooledb_1  | 2020-04-10 13:38:59+00:00 [Note] [Entrypoint]: /usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/database.sql`.
+Dabei wird auch im Log ausgegeben, wenn die `database.sql` geladen wird: `schwimmen_db_1  | 2020-04-10 13:38:59+00:00 [Note] [Entrypoint]: /usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/database.sql`.
 
 Um alle Container zu stoppen, können diese mittels [Strg] + [c] beendet werden.
 
@@ -87,11 +87,11 @@ Der Output sieht wie folgt aus:
 Gracefully stopping... (press Ctrl+C again to force)
 Stopping node-client-server-extended-with-database_server_1       ...
 Stopping node-client-server-extended-with-database_phpmyadmin_1   ...
-Stopping node-client-server-extended-with-database_meinecooledb_1 ...
+Stopping node-client-server-extended-with-database_schwimmen_db_1 ...
 # wenn nochmal [Strg] + [c] gedrückt wird:
 Stopping node-client-server-extended-with-database_server_1       ... done
 Stopping node-client-server-extended-with-database_phpmyadmin_1   ... done
-Stopping node-client-server-extended-with-database_meinecooledb_1 ... done
+Stopping node-client-server-extended-with-database_schwimmen_db_1 ... done
 ```
 
 **Wichtig:** Der Parameter `--build` sorgt dafür, dass bei jedem Aufruf von `docker-compose up` alle Container neu gebaut werden, damit alle Änderungen im `server.js` sowie im Datenbankschema `database.sql` in den jeweiligen Container integriert werden.

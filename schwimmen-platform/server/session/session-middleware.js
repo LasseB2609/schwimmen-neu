@@ -3,7 +3,6 @@
 const session = require('express-session');
 
 //Erstellt die Session-Middleware.
-//Redis-Store ist verpflichtend, damit Sessions zwischen mehreren Server-Instanzen geteilt werden.
 function createSessionMiddleware(options) {
     const {
         sessionSecret,
@@ -11,6 +10,8 @@ function createSessionMiddleware(options) {
         secureCookie = false
     } = options;
 
+
+    //Konfigurationen für die Session-Middleware
     const baseConfig = {
         secret: sessionSecret, //geheimer Schlüssel für die Session-Cookies
         resave: false, //Session wird nicht bei jedem Request neu gespeichert
@@ -23,7 +24,7 @@ function createSessionMiddleware(options) {
         } //konfiguriert die Eigenschaften der Session-Cookies
     };
 
-    //Redis-Pakete sind Voraussetzung.
+    //Redis-Pakete sind Voraussetzung
     const { createClient } = require('redis');
     const { RedisStore } = require('connect-redis');
 
