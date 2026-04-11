@@ -9,7 +9,7 @@ const { promisify } = require('util'); //dient dazu, die scrypt-Funktion von cry
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const { Server } = require('socket.io'); //nimmt die Server-Klasse aus dem Socket.IO Modul
-const gameState = require('./game/gameState'); //für Funktionen wie createGame, saveGame, loadGame
+const gameState = require('./game/game-state-store'); //für Funktionen wie createGame, saveGame, loadGame
 const { createPasswordHelpers } = require('./auth/password');
 const { requireAuthPage, requireAuthApi } = require('./auth/guards');
 const { registerAuthRoutes } = require('./auth/routes');
@@ -97,7 +97,7 @@ function dbQuery(sql, params = []) {
 // 5) Helper/Factories vorbereiten
 const { hashPassword, verifyPassword } = createPasswordHelpers(crypto, scryptAsync); //holt die Funktionen für das Hashen und Verifizieren von Passwörtern
 
-// 7) HTTP-Routen registrieren
+// 6) HTTP-Routen registrieren
 app.get('/', (req, res) => {
     console.log("Got a request and redirect it to index page");
     res.redirect('/static/auth/index.html');
@@ -113,10 +113,10 @@ registerAuthRoutes(app, {
     requireAuthApi
 }); //übergibt die Express-App und weitere benötigte Informationen/Funktionen an registerAuthRoutes, sodass erfolgreiche Authentifizierungsrouten erstellt werden können
 
-// 8) statische Dateien werden aus dem Public Ordner bereitgestellt
+// 7) statische Dateien werden aus dem Public Ordner bereitgestellt
 app.use('/static', express.static('public'));
 
-// 9) Socket-Authentifizierung und Socket-Handler registrieren
+// 8) Socket-Authentifizierung und Socket-Handler registrieren
 registerSocketSessionAuth(io, sessionMiddleware);
 registerGameSocketHandlers(io, {
     gameState,
@@ -124,7 +124,7 @@ registerGameSocketHandlers(io, {
     ROUND_END_BUFFER_MS
 });
 
-// 10) Server starten
+// 9) Server starten
 server.listen(PORT, HOST, () => {
     console.log(`Running on http://${HOST}:${PORT}`);
 });
