@@ -7,7 +7,6 @@ const path = require('path'); //für Dateipfade
 const crypto = require('crypto'); //für Passwort-Hashing
 const { promisify } = require('util'); //dient dazu, die scrypt-Funktion von crypto in eine Promise-basierte Funktion umzuwandeln
 const rateLimit = require('express-rate-limit');
-const session = require('express-session');
 const { Server } = require('socket.io'); //nimmt die Server-Klasse aus dem Socket.IO Modul
 const gameState = require('./game/game-state-store'); //für Funktionen wie createGame, saveGame, loadGame
 const { createPasswordHelpers } = require('./auth/password');
@@ -15,6 +14,7 @@ const { requireAuthPage, requireAuthApi } = require('./auth/guards');
 const { registerAuthRoutes } = require('./auth/routes');
 const { registerSocketSessionAuth } = require('./socket/session-auth');
 const { registerGameSocketHandlers } = require('./socket/game-socket-handlers');
+const { createSessionMiddleware } = require('./session/session-middleware');
 
 // 2) Datenbank initialisieren
 const mysql = require('mysql');
@@ -28,19 +28,37 @@ var dbInfo = {
 };
 var connection = mysql.createPool(dbInfo);
 console.log("Conecting to database...");
+//Einfacher Retry-Mechanismus beim Start: DB ist im Compose-Verbund oft erst nach dem Server bereit.
+const DB_CONNECT_MAX_RETRIES = Number.parseInt(process.env.DB_CONNECT_MAX_RETRIES || '30', 10);
+const DB_CONNECT_RETRY_DELAY_MS = Number.parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS || '2000', 10);
+
 //Check database connection
-connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
-    if (error) throw error; // <- this will throw the error and exit normally
-    // check the solution - should be 2
-    if (results[0].solution == 2) {
-        // everything is fine with the database
-        console.log("Database connected and works");
-    } else {
-        // connection is not fine - please check
-        console.error("There is something wrong with your database connection! Please check");
-        process.exit(5); // <- exit application with error code e.g. 5
-    }
-});
+function checkDatabaseConnection(attempt = 1) {
+    return new Promise((resolve, reject) => {
+        connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
+            if (error) {
+                if (attempt >= DB_CONNECT_MAX_RETRIES) {
+                    return reject(error);
+                }
+
+                console.warn(`Database not ready (attempt ${attempt}/${DB_CONNECT_MAX_RETRIES}). Retry in ${DB_CONNECT_RETRY_DELAY_MS}ms...`);
+                return setTimeout(() => {
+                    checkDatabaseConnection(attempt + 1).then(resolve).catch(reject);
+                }, DB_CONNECT_RETRY_DELAY_MS);
+            }
+
+            // check the solution - should be 2
+            if (results[0].solution == 2) {
+                // everything is fine with the database
+                console.log("Database connected and works");
+                return resolve();
+            }
+
+            // connection is not fine - please check
+            return reject(new Error('Database health-check returned an unexpected result.'));
+        });
+    });
+}
 
 
 // Constants
@@ -59,17 +77,11 @@ const io = new Server(server); // erstellt eine neue Socket.IO-Instanz und binde
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 4) Globale Middleware registrieren und an express anhängen
-const sessionMiddleware = session({
-    secret: SESSION_SECRET, //geheimer Schlüssel für die Session-Cookies
-    resave: false, //Session wird nicht bei jedem Request neu gespeichert
-    saveUninitialized: false, //Session wird nicht gespeichert, wenn sie nicht initialisiert ist
-    cookie: {
-        httpOnly: true, //Cookies sind nicht durch JavaScript im browser auslesbar
-        sameSite: 'lax', //Cookies werden bei Anfragen von anderen Seiten nicht gesendet, außer bei Navigationen (z.B. Link-Klicks), um CSRF-Angriffe zu erschweren
-        secure: false, //Cookie darf auch über http gesendet werden (todo: überprüfen ob vor Abgabe noch geändert werden sollte)
-        maxAge: SESSION_COOKIE_MAX_AGE_MS //Ablaufzeit (12h)
-    } //konfiguriert die Eigenschaften der Session-Cookies
+// 4) Globale Middleware (mit redis) registrieren und an express anhängen
+const sessionMiddleware = createSessionMiddleware({
+    sessionSecret: SESSION_SECRET,
+    sessionCookieMaxAgeMs: SESSION_COOKIE_MAX_AGE_MS,
+    secureCookie: false
 });
 app.use(sessionMiddleware);
 
@@ -125,7 +137,14 @@ registerGameSocketHandlers(io, {
 });
 
 // 9) Server starten
-server.listen(PORT, HOST, () => {
-    console.log(`Running on http://${HOST}:${PORT}`);
-});
+checkDatabaseConnection()
+    .then(() => {
+        server.listen(PORT, HOST, () => {
+            console.log(`Running on http://${HOST}:${PORT}`);
+        });
+    })
+    .catch((error) => {
+        console.error('Database connection failed after retries:', error);
+        process.exit(5); // <- exit application with error code e.g. 5
+    });
 
