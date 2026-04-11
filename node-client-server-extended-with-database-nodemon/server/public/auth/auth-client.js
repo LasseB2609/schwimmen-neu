@@ -56,7 +56,7 @@ loginButton.addEventListener('click', async () => {
 
     //Login erfolgreich, Weiterleitung zur Lobby-Seite
     setStatus('Login erfolgreich.', data);
-    window.location.href = 'lobby.html';
+    window.location.href = '/static/lobby/lobby.html';
 });
 
 //event-Listener für den Register-Button
@@ -83,7 +83,7 @@ registerButton.addEventListener('click', async () => {
 
     //Registrierung erfolgreich, Weiterleitung zur Lobby-Seite
     setStatus('Registrierung erfolgreich.', data);
-    window.location.href = 'lobby.html';
+    window.location.href = '/static/lobby/lobby.html';
 });
 
 loadMe(); //prüft beim Laden, ob bereits eine Session besteht
