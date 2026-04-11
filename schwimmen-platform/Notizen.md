@@ -11,34 +11,26 @@ damit Projekt funktioniert:
     - Befehl "npm install" ausführen
 
 ToDos:
-    - evtl. noch einen sleep einbauen, dass Server nicht versucht mit der Datenbank zu connecten, obwohl diese noch nicht bereit ist
     - Kommentare überprüfen (z.B. bei "Funktionen" in server.js)
-    - mal sehen ob server.js evtl noch aufgeteilt werden sollte in server-lobby.js und server-game.js oder so
-    - generell nochmal sehen, ob Dateien zu groß sind und ggf. auftrennen
-    - wahrscheinlich noch socketid aus der db entfernen
     - nochmal nachsehen, wo es noch Sinn macht try/catch blöcke hinzuzüfgen. oder generell alle weglassen?
     - in jeder datei nach "TODO" suchen
-    - nachsehen, wozu die ganzen Sachen aus der URL geholt werden? evtl. wieder rausnehmen
-    - Status Ausgaben für das Debuggen wieder entfernen (überall)
+    - Status Ausgaben für das Debuggen wieder entfernen (überall) und auch andere debugging sachen raus
     - Überprüfungen/Validierungen bei den Spielregeln, ob überhaupt 3 Karten etc. nötig sind - wieder entfernen vllt?
     - es können aktuell (02.04) noch Games erstellt werden, auch wenn eine Fehlermeldung kommt, dass die gegebenen Spieler nicht existieren
-    - eigene Round Relation?
-    - evtl. die ganzen Validierungen und getOrLoadGame, die bei allen Zugarten aufgerufen werden in eine eigene Funktion auslagern
-    - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den änden/auf dem tisch liegen müssen
+    - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den händen/auf dem tisch liegen müssen
     - toInt Methode checken
     - Regeln einbauen, falls der Stapel leer ist
     - bei Spielende zurück in die Lobby
     -mehrere Server und Lastverteilung (für Lobby und Spiel)
     -> dann auch dieses reverseproxy
     -> auch online?
-    - zu lange dateien aufteilen, zb dort wo oben tausend html elemente geholt werden
-    -die doppelten dbquery zusammenlegen
     - eigene Score Anzeige dauerhaft aktualisieren lassen
     - weniger Kommentare
     - Installationsanweisung ausfüllen
     - anzeigen, wer klopft
-    - Dateinamen überprüfen
     - überprüfen, ob wir noch caching brauchen, da aktuell alles immer aus der db geholt wird
+    - Gewinneranzeige oder so
+    - was machen wenn client disconnected?
 
 
 Warum Socket.io:
