@@ -1,5 +1,6 @@
 version: '3.3'
 services:
+  # App-Instanz 1
   server:
     build: server
     ports:
@@ -10,7 +11,9 @@ services:
       MYSQL_USER: schwimmen_user
       MYSQL_PASSWORD: schwimmen_pass
       MYSQL_HOSTNAME: schwimmen_db
+      SESSION_STORE: redis
       REDIS_URL: redis://redis:6379
+      SERVER_INSTANCE: server-1
       RATE_LIMIT_WINDOW_MS: 60000
       RATE_LIMIT_MAX: 10000
     depends_on:
@@ -22,6 +25,53 @@ services:
     volumes:
       # :Z may needs to be removed, if this does not work
       - ./server:/usr/src/app:Z
+
+  # App-Instanz 2
+  server2:
+    build: server
+    ports:
+      - "8081:8080"
+    restart: always
+    environment:
+      MYSQL_DATABASE: schwimmen_db
+      MYSQL_USER: schwimmen_user
+      MYSQL_PASSWORD: schwimmen_pass
+      MYSQL_HOSTNAME: schwimmen_db
+      SESSION_STORE: redis
+      REDIS_URL: redis://redis:6379
+      SERVER_INSTANCE: server-2
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX: 10000
+    depends_on:
+      - schwimmen_db
+      - redis
+    command: nodemon -L server.js
+    volumes:
+      - ./server:/usr/src/app:Z
+
+  # App-Instanz 3
+  server3:
+    build: server
+    ports:
+      - "8082:8080"
+    restart: always
+    environment:
+      MYSQL_DATABASE: schwimmen_db
+      MYSQL_USER: schwimmen_user
+      MYSQL_PASSWORD: schwimmen_pass
+      MYSQL_HOSTNAME: schwimmen_db
+      SESSION_STORE: redis
+      REDIS_URL: redis://redis:6379
+      SERVER_INSTANCE: server-3
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX: 10000
+    depends_on:
+      - schwimmen_db
+      - redis
+    command: nodemon -L server.js
+    volumes:
+      - ./server:/usr/src/app:Z
+
   schwimmen_db:
     # Use of a modified datbase in 'db'-folder.
     # See README.md for more information.
