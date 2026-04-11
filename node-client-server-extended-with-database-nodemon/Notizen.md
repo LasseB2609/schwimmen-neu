@@ -35,6 +35,9 @@ ToDos:
     -die doppelten dbquery zusammenlegen
     - eigene Score Anzeige dauerhaft aktualisieren lassen
     - weniger Kommentare
+    - Installationsanweisung ausfüllen
+    - anzeigen, wer klopft
+    - Dateinamen überprüfen
 
 
 Warum Socket.io:
