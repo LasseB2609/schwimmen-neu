@@ -117,6 +117,16 @@ app.get('/', (req, res) => {
     res.redirect('/static/auth/index.html');
 });
 
+//Einfache Health-Route fuer LB-Checks und Demo (zeigt antwortende Instanz)
+app.get('/health', (req, res) => {
+    res.json({
+        ok: true,
+        serverInstance: SERVER_INSTANCE,
+        pid: process.pid,
+        timestamp: new Date().toISOString()
+    });
+});
+
 registerAuthRoutes(app, {
     path,
     __dirname,
