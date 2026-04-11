@@ -15,6 +15,8 @@ const { registerAuthRoutes } = require('./auth/routes');
 const { registerSocketSessionAuth } = require('./socket/session-auth');
 const { registerGameSocketHandlers } = require('./socket/game-socket-handlers');
 const { createSessionMiddleware } = require('./session/session-middleware');
+const { registerSocketRedisAdapter } = require('./socket/socket-redis-adapter');
+const lobbyStateStore = require('./lobby/lobby-state-store');
 
 // 2) Datenbank initialisieren
 const mysql = require('mysql');
@@ -64,6 +66,7 @@ function checkDatabaseConnection(attempt = 1) {
 // Constants
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
+const SERVER_INSTANCE = process.env.SERVER_INSTANCE || 'server-1';
 const ROUND_END_BUFFER_MS = 8000; //8 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-change-me'; //setzt den geheimen Schlüssel für die Session Cookies ("dev-only-change-me" ist ein Fallback)
 const SESSION_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 12; //legt fest, wie lange der Session-Cookie gültig bleibt (hier 12h)
@@ -111,7 +114,6 @@ const { hashPassword, verifyPassword } = createPasswordHelpers(crypto, scryptAsy
 
 // 6) HTTP-Routen registrieren
 app.get('/', (req, res) => {
-    console.log("Got a request and redirect it to index page");
     res.redirect('/static/auth/index.html');
 });
 
@@ -129,22 +131,27 @@ registerAuthRoutes(app, {
 app.use('/static', express.static('public'));
 
 // 8) Socket-Authentifizierung und Socket-Handler registrieren
-registerSocketSessionAuth(io, sessionMiddleware);
-registerGameSocketHandlers(io, {
-    gameState,
-    connection,
-    ROUND_END_BUFFER_MS
-});
 
-// 9) Server starten (wenn Datenbankverbindung erfolgreich)
-checkDatabaseConnection()
-    .then(() => {
-        server.listen(PORT, HOST, () => {
-            console.log(`Running on http://${HOST}:${PORT}`);
-        });
-    })
-    .catch((error) => {
-        console.error('Database connection failed after retries:', error);
-        process.exit(5); // exit application with error code 5 
+// 9) Server starten (wenn Datenbankverbindung und Redis Adapter erfolgreich)
+async function startServer() {
+    await checkDatabaseConnection();
+    await registerSocketRedisAdapter(io);
+
+    registerSocketSessionAuth(io, sessionMiddleware);
+    registerGameSocketHandlers(io, {
+        gameState,
+        connection,
+        ROUND_END_BUFFER_MS,
+        lobbyStateStore
     });
+
+    server.listen(PORT, HOST, () => {
+        console.log(`[${SERVER_INSTANCE}] Running on http://${HOST}:${PORT}`);
+    });
+}
+
+startServer().catch((error) => {
+    console.error('Server startup failed:', error);
+    process.exit(5); // exit application with error code 5
+});
 
