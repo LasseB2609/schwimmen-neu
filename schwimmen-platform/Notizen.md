@@ -38,6 +38,7 @@ ToDos:
     - Installationsanweisung ausfüllen
     - anzeigen, wer klopft
     - Dateinamen überprüfen
+    - überprüfen, ob wir noch caching brauchen, da aktuell alles immer aus der db geholt wird
 
 
 Warum Socket.io:

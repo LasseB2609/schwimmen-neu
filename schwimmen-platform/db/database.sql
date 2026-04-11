@@ -72,6 +72,26 @@ CREATE TABLE IF NOT EXISTS Game_Card (
 );
 
 -- ============================================
+-- TABLE: Lobby (Wartezimmer vor einem Spiel)
+-- ============================================
+CREATE TABLE IF NOT EXISTS Lobby (
+    lobby_id INT AUTO_INCREMENT PRIMARY KEY,
+    lobby_name VARCHAR(100) NOT NULL,
+    host_player_id INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'waiting',  -- 'waiting', 'started'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- TABLE: Lobby_Player (Spieler in einer Lobby)
+-- ============================================
+CREATE TABLE IF NOT EXISTS Lobby_Player (
+    lobby_id INT NOT NULL,
+    player_id INT NOT NULL,
+    PRIMARY KEY (lobby_id, player_id)
+);
+
+-- ============================================
 -- INSERT: Alle 32 Karten (6-A, alle Farben)
 -- ============================================
 INSERT INTO Card (suit, rank, value) VALUES

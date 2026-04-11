@@ -2,10 +2,7 @@
 
 //Funktion, um die Socket-Handler für die gesamte Spiellogik und Lobbylogik zu registrieren
 function registerGameSocketHandlers(io, deps) {
-    const { gameState, connection, ROUND_END_BUFFER_MS } = deps;
-    const activeGames = new Map(); //wird verwendet, um die aktiven Spiele speichern zu können
-    const activeLobbies = new Map(); //speichert wartende Lobbys bis ein Spiel gestartet wird
-    let nextLobbyId = 1;
+    const { gameState, connection, ROUND_END_BUFFER_MS, lobbyStateStore } = deps;
 
     //Funktion, um den aktuellen Spielstatus zurückzugeben, damit er später an die Clients gesendet werden kann 
     function getGameState(game) {
@@ -41,47 +38,16 @@ function registerGameSocketHandlers(io, deps) {
     }
 
     //Funktion, um die Liste der Lobbys an alle Clients zu senden, damit sie die verfügbaren Lobbys sehen können
-    function emitLobbyList() {
-        const lobbies = Array.from(activeLobbies.values()) //wandelt die Map in ein Array um
-            .filter((lobby) => lobby.status === 'waiting') //filtert nur nach Lobbys mit dem Status "waiting"
+    async function emitLobbyList() {
+        const lobbies = (await lobbyStateStore.getWaitingLobbies(connection)) //alle wartenden Lobbys aus der DB holen (instanzübergreifend)
             .map(getLobbySummary); //wandelt die Daten der Lobby mit der getLobbySummary Funktion in ein übersichtliches Format um
         io.emit('lobby-list', { lobbies }); //sendet die Lobby-Liste an alle Clients
     }
 
-    //Funktion, um einen Spieler aus einer Lobby zu entfernen
-    function removePlayerFromLobby(lobby, playerId) {
-        lobby.playerIds.delete(playerId); //entfernt die playerId aus den playerIds der Lobby
-
-        //falls die Lobby jetzt leer ist, wird sie aus activeLobbies gelöscht
-        if (lobby.playerIds.size === 0) {
-            activeLobbies.delete(lobby.lobbyId);
-            return;
-        }
-
-        //falls der entfernte Spieler der Host war, wird ein neuer Host festgelegt (der erste Spieler in der Lobby)
-        if (lobby.hostPlayerId === playerId) {
-            lobby.hostPlayerId = Array.from(lobby.playerIds)[0];
-        }
-    }
-
-    //lädt ein Spiel aus activeGames oder bei Bedarf aus der Datenbank
-    async function getOrLoadGame(roomId) {
-        //zunächst wird versucht das Spiel aus activeGames zu holen
-        let game = activeGames.get(roomId);
-        if (game) {
-            console.log("INFO: DAS SPIEL WIRD AUS ACTIVE GAMES GEHOLT (RAM)");
-            return game; //gibt das Spiel zurück
-        }
-
-        //falls das Spiel nicht in activeGames gefunden wird, wird versucht es aus der Datenbank zu laden
+    //lädt ein Spiel aus der Datenbank (alle Instanzen haben so immer den aktuellen Stand)
+    async function loadGameFromDb(roomId) {
         const gameId = Number.parseInt(roomId, 10);
-        game = await gameState.loadGame(connection, gameId);
-        if (game) {
-            console.log("INFO: DAS SPIEL WIRD AUS DER DATENBANK GELADEN");
-            activeGames.set(roomId, game); //speichert das geladene Spiel in activeGames, damit es beim nächsten Mal direkt verfügbar ist
-        }
-
-        return game; //gibt das Spiel zurück
+        return await gameState.loadGame(connection, gameId);
     }
 
     function wait(ms) {
@@ -160,93 +126,95 @@ function registerGameSocketHandlers(io, deps) {
         console.log('Socket connected:', socket.id); //Konsolenausgabe der Socket-ID des verbundenen Clients
 
         //wenn der Client eine "lobby-list" anfragt, wird folgende Funktion ausgeführt
-        socket.on('lobby-list-request', () => {
-            const lobbies = Array.from(activeLobbies.values()) //wandelt die Map in ein Array um
-                .filter((lobby) => lobby.status === 'waiting') //filtert nur nach Lobbys mit dem Status "waiting"
+        socket.on('lobby-list-request', async () => {
+            const lobbies = (await lobbyStateStore.getWaitingLobbies(connection)) //alle wartenden Lobbys aus der DB holen
                 .map(getLobbySummary); //wandelt die Daten der Lobby mit der getLobbySummary Funktion in ein übersichtliches Format um
             socket.emit('lobby-list', { lobbies });
         });
 
         //wenn der Client eine "lobby-create" Nachricht sendet, wird folgende Funktion ausgeführt
-        socket.on('lobby-create', (data) => {
-            const playerId = socket.data.playerId; //speichert die playerId aus der socket-Verbindung
-            const lobbyName = String(data?.lobbyName || '').trim() || 'Neue Lobby'; //speichert den LobbyNamen als String ab, falls nicht vorhanden, wird "Neue Lobby" verwendet
+        socket.on('lobby-create', async (data) => {
+            try {
+                const playerId = socket.data.playerId; //speichert die playerId aus der socket-Verbindung
+                const lobbyName = String(data?.lobbyName || '').trim() || 'Neue Lobby'; //speichert den LobbyNamen als String ab, falls nicht vorhanden, wird "Neue Lobby" verwendet
 
-            //überprüft, ob die playerId gültig ist
-            if (!Number.isInteger(playerId)) {
-                socket.emit('game-error', { message: 'Ungültige playerId für lobby-create.' });
-                return;
+                //überprüft, ob die playerId gültig ist
+                if (!Number.isInteger(playerId)) {
+                    socket.emit('game-error', { message: 'Ungültige playerId für lobby-create.' });
+                    return;
+                }
+
+                const lobby = await lobbyStateStore.createLobby(connection, playerId, lobbyName); //Lobby in der DB erstellen
+                const lobbyRoomId = `lobby-${lobby.lobbyId}`; //erstellt eine eindeutige RaumId für jede Lobby (basierend auf der LobbyId)
+
+                socket.join(lobbyRoomId); //erstellt einen Socket.io Raum für die Lobby
+                socket.data.lobbyId = lobby.lobbyId; //speichert die lobbyId im Socket-Datenobjekt
+
+                io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(lobby)); //sendet eine Nachricht an alle Clients im Lobby-Raum, dass die Lobby aktualisiert wurde
+                await emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients, damit sie die neue Lobby sehen können
+            } catch (error) { //Fehlerbehandlung
+                console.error('lobby-create failed:', error);
+                socket.emit('game-error', { message: error.message });
             }
-
-            const lobbyId = String(nextLobbyId++); //erstellt eine neue LobbyId und erhöht den nextLobbyId Zähler für die nächste Lobby
-            const lobbyRoomId = `lobby-${lobbyId}`; //erstellt eine eindeutige RaumId für jede Lobby (basierend auf der LobbyId)
-            const lobby = {
-                lobbyId,
-                lobbyName,
-                hostPlayerId: playerId,
-                playerIds: new Set([playerId]), //speichert die playerIds als Set, damit keine doppelten Einträge möglich sind
-                status: 'waiting'
-            }; //erstellt ein Lobby-Objekt
-
-
-            activeLobbies.set(lobbyId, lobby); //fügt die Lobby den activeLobbies hinzu
-            socket.join(lobbyRoomId); //erstellt einen Socket.io Raum für die Lobby
-            socket.data.playerId = playerId; //speichert die playerId im Socket-Datenobjekt, damit man später weiß, wer diese Socket-Verbindung hat
-            socket.data.lobbyId = lobbyId; //speichert die lobbyId im Socket-Datenobjekt
-
-            io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(lobby)); //sendet eine Nachricht an alle Clients im Lobby-Raum, dass die Lobby aktualisiert wurde
-            emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients, damit sie die neue Lobby sehen können
         });
 
         //wenn der Client eine "lobby-join" Nachricht sendet, wird folgende Funktion ausgeführt
-        socket.on('lobby-join', (data) => {
-            const playerId = socket.data.playerId; //speichert die playerId aus der Socket Verbindung
-            const lobbyId = String(data?.lobbyId || ''); //speichert die lobbyId aus den übergebenen Daten als String ab
-            const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die der Client joinen möchte
-            const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
-            //überprüft, ob die playerId gültig ist und die Lobby existiert
-            if (!Number.isInteger(playerId) || !lobbyId) {
-                socket.emit('game-error', { message: 'Ungültige Daten für lobby-join.' });
-                return;
+        socket.on('lobby-join', async (data) => {
+            try {
+                const playerId = socket.data.playerId; //speichert die playerId aus der Socket Verbindung
+                const lobbyId = String(data?.lobbyId || ''); //speichert die lobbyId aus den übergebenen Daten als String ab
+                const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
+
+                //überprüft, ob die playerId gültig ist und die Lobby existiert
+                if (!Number.isInteger(playerId) || !lobbyId) {
+                    socket.emit('game-error', { message: 'Ungültige Daten für lobby-join.' });
+                    return;
+                }
+
+                const lobby = await lobbyStateStore.getLobby(connection, lobbyId); //Lobby aus der DB holen (funktioniert auf allen Instanzen)
+                //überprüft, ob die Lobby existiert und den Status "waiting" hat
+                if (!lobby || lobby.status !== 'waiting') {
+                    socket.emit('game-error', { message: 'Lobby nicht gefunden.' });
+                    return;
+                }
+
+                await lobbyStateStore.addPlayerToLobby(connection, lobbyId, playerId); //Spieler in der DB zur Lobby hinzufügen
+                socket.join(lobbyRoomId); //Client joint dem Socket.io Raum der Lobby
+                socket.data.lobbyId = lobbyId; //speichert die lobbyId im Socket-Datenobjekt
+
+                const updatedLobby = await lobbyStateStore.getLobby(connection, lobbyId); //aktualisierte Lobby aus DB holen
+                io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(updatedLobby)); //sendet eine Nachricht an alle Clients im Lobby-Raum, dass die Lobby aktualisiert wurde
+                await emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients, damit sie die neue Spieleranzahl in der Lobby sehen können
+            } catch (error) {
+                console.error('lobby-join failed:', error);
+                socket.emit('game-error', { message: error.message });
             }
-
-            //überprüft, ob die Lobby existiert und den Status "waiting" hat
-            if (!lobby || lobby.status !== 'waiting') {
-                socket.emit('game-error', { message: 'Lobby nicht gefunden.' });
-                return;
-            }
-
-            //fügt den Spieler der Lobby hinzu
-            lobby.playerIds.add(playerId); //fügt die playerId zu den playerIds der Lobby hinzu
-            socket.join(lobbyRoomId); //Client joint dem Socket.io Raum der Lobby
-            socket.data.playerId = playerId; //speichert die playerId im Socket-Datenobjekt, damit man später weiß, wer diese Socket-Verbindung hat
-            socket.data.lobbyId = lobbyId; //speichert die lobbyId im Socket-Datenobjekt
-
-            io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(lobby)); //sendet eine Nachricht an alle Clients im Lobby-Raum, dass die Lobby aktualisiert wurde
-            emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients, damit sie die neue Spieleranzahl in der Lobby sehen können
         });
 
         //wenn der Client eine "lobby-leave" Nachricht sendet, wird folgende Funktion ausgeführt
-        socket.on('lobby-leave', (data) => {
-            const playerId = socket.data.playerId; //speichert die plyaerId aus der socket-Verbindung
-            const lobbyId = String(data?.lobbyId ?? socket.data.lobbyId ?? ''); //speichert die lobbyId aus den übergebenen Daten oder aus den Socket-Daten als String
-            const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die der Client verlassen möchte
-            const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
+        socket.on('lobby-leave', async (data) => {
+            try {
+                const playerId = socket.data.playerId; //speichert die plyaerId aus der socket-Verbindung
+                const lobbyId = String(data?.lobbyId ?? socket.data.lobbyId ?? ''); //speichert die lobbyId aus den übergebenen Daten oder aus den Socket-Daten als String
+                const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
 
-            //überprüft, ob die playerId gültig ist und die Lobby existiert
-            if (!Number.isInteger(playerId) || !lobby) {
-                return;
+                //prüft, ob die playerId gültig ist und eine lobbyId vorhanden ist
+                if (!Number.isInteger(playerId) || !lobbyId) {
+                    return;
+                }
+
+                const updatedLobby = await lobbyStateStore.removePlayerFromLobby(connection, lobbyId, playerId); //Spieler aus der DB entfernen; gibt null zurück wenn Lobby gelöscht wurde
+                socket.leave(lobbyRoomId); //lässt den Client den Socket.io Raum der Lobby verlassen
+                socket.data.lobbyId = null; //entfernt die lobbyId aus den Socket-Daten, da der Client ja jetzt keine Lobby mehr hat
+
+                //falls die Lobby noch existiert (nicht leer), wird eine Nachricht an die Clients gesendet, dass die Lobby aktualisiert wurde
+                if (updatedLobby) {
+                    io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(updatedLobby));
+                }
+                await emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients
+            } catch (error) { //Fehlerbehandlung
+                console.error('lobby-leave failed:', error);
             }
-
-            removePlayerFromLobby(lobby, playerId); //entfernt den Spieler aus der Lobby und löscht die Lobby, falls sie jetzt leer ist
-            socket.leave(lobbyRoomId); //lässt den Client den Socket.io Raum der Lobby verlassen
-            socket.data.lobbyId = null; //entfernt die lobbyId aus den Socket-Daten, da der Client ja jetzt keine Lobby mehr hat
-
-            //falls die Lobby noch existiert, wird eine Nachricht an die Clients im Lobby-Raum gesendet, dass die Lobby aktualisiert wurde
-            if (activeLobbies.has(lobbyId)) {
-                io.to(lobbyRoomId).emit('lobby-updated', getLobbySummary(lobby));
-            }
-            emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients
         });
 
         //wenn der Client eine "lobby-start-game" Nachricht sendet, wird folgende Funktion ausgeführt
@@ -254,7 +222,7 @@ function registerGameSocketHandlers(io, deps) {
             try {
                 const lobbyId = String(data?.lobbyId || socket.data.lobbyId || ''); //speichert die LobbyId aus den übergebenen Daten oder aus den Socket-Daten als String ab
                 const playerId = socket.data.playerId; //speichert die playerId aus der Socket-Verbindung
-                const lobby = activeLobbies.get(lobbyId); //speichert die Lobby ab, die das Spiel starten möchte
+                const lobby = await lobbyStateStore.getLobby(connection, lobbyId); //Lobby aus der DB holen
                 const lobbyRoomId = `lobby-${lobbyId}`; //erstellt die RoomId für den Socket.io Raum der Lobby
                 //überprüft, ob die Lobby existiert und den Status "waiting" hat 
                 if (!lobby || lobby.status !== 'waiting') {
@@ -278,12 +246,10 @@ function registerGameSocketHandlers(io, deps) {
                 //erstellt ein neues Spiel mit den playerIds der Lobby
                 const game = await gameState.createGame(connection, playerIds); //erstellt das Game und speichert es als Objekt ab
                 const roomId = String(game.game_id); //speichert die game_id als roomId ab
-                activeGames.set(roomId, game); //speichert das Spiel in der activeGames Map
 
-                lobby.status = 'started'; //der Lobby-Status wird auf started gesetzt
                 io.to(lobbyRoomId).emit('lobby-game-started', { gameId: game.game_id, lobbyId }); //sendet eine Nachricht an alle Clients im Lobby-Raum, dass das Spiel gestartet wurde
-                activeLobbies.delete(lobbyId); //entfernt die Lobby aus den activeLobbies
-                emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients 
+                await lobbyStateStore.deleteLobby(connection, lobbyId); //Lobby aus der DB entfernen
+                await emitLobbyList(); //schickt die aktualisierte Lobby-Liste an alle Clients 
             } catch (error) { //Fehlerbehandlung
                 console.error('lobby-start-game failed:', error);
                 socket.emit('game-error', { message: error.message });
@@ -303,7 +269,6 @@ function registerGameSocketHandlers(io, deps) {
 
                 const game = await gameState.createGame(connection, playerIds); //erstellt ein neues Spiel mit der Datenbankverbindung und den übergebenen Spieler-IDs
                 const roomId = String(game.game_id); //speichert die game_id als roomId ab
-                activeGames.set(roomId, game); //speichert das Spiel in der activeGames Map, damit es später abgerufen werden kann (z.B. wenn ein Spieler beitritt oder der Spielstatus aktualisiert werden muss)
 
                 socket.join(roomId); //erstellt einen socket.io Raum mit der roomID, damit darüber mit allen Clients kommuniziert werden kann
 
@@ -321,12 +286,12 @@ function registerGameSocketHandlers(io, deps) {
         //wenn der Client eine "join-game" Nachricht sendet, wird folgende Funktion ausgeführt
         socket.on('join-game', async (data) => {
             const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
-            const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+            const game = await loadGameFromDb(roomId); //holt das Spiel aus der Datenbank
             const playerId = socket.data.playerId; //holt die playerId aus der Socket-Verbindung
 
             
             if (!game) { //wird ausgeführt falls das Spiel nicht existiert/nicht gefunden wurde
-                socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                socket.emit('game-error', { message: 'Spiel nicht gefunden.' });
                 return;
             }
 
@@ -356,10 +321,10 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
-                const game = await getOrLoadGame(roomId);
+                const game = await loadGameFromDb(roomId);
                 //überprüfen, ob das Spiel existiert
                 if (!game) {
-                    socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                    socket.emit('game-error', { message: 'Spiel nicht gefunden.' });
                     return;
                 }
 
@@ -391,9 +356,9 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
-                const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+                const game = await loadGameFromDb(roomId); //holt das Spiel aus der Datenbank
                 if (!game) { //überprüfen, ob das Spiel existiert
-                    socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                    socket.emit('game-error', { message: 'Spiel nicht gefunden.' });
                     return;
                 }
 
@@ -414,11 +379,11 @@ function registerGameSocketHandlers(io, deps) {
                 const roomId = String(data?.gameId || ''); //holt die GameID aus den übergebenen Daten und speichert sie als RoomId ab
                 const playerId = socket.data.playerId; //holt die playerId aus der Socket-Verbindung
 
-                const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+                const game = await loadGameFromDb(roomId); //holt das Spiel aus der Datenbank
                 
                 //überprüfen, ob das Spiel existiert
                 if (!game) {
-                    socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                    socket.emit('game-error', { message: 'Spiel nicht gefunden.' });
                     return;
                 }
 
@@ -444,9 +409,9 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
-                const game = await getOrLoadGame(roomId); //holt das Spiel aus activeGames oder lädt es aus der Datenbank
+                const game = await loadGameFromDb(roomId); //holt das Spiel aus der Datenbank
                 if (!game) { //überprüfen, ob das Spiel existiert
-                    socket.emit('game-error', { message: 'Spiel nicht in activeGames gefunden.' });
+                    socket.emit('game-error', { message: 'Spiel nicht gefunden.' });
                     return;
                 }
 
