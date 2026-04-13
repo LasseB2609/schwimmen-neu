@@ -31,6 +31,10 @@ ToDos:
     - überprüfen, ob wir noch caching brauchen, da aktuell alles immer aus der db geholt wird
     - Gewinneranzeige oder so
     - was machen wenn client disconnected?
+    - locks oder Transactions oder so hinzufügen
+    -evtl dateien umbenennen (vllt deutlicher machen, was für client und was für server wichtig ist)
+    - check ob wir leastconn brauchen
+    -generell cleanup
 
 
 Warum Socket.io:
