@@ -125,23 +125,22 @@ async function removePlayerFromLobby(connection, lobbyId, playerId) {
     return getLobby(connection, lobbyId);
 }
 
-// Entfernt einen Spieler aus allen Lobbys, in denen er aktuell eingetragen ist.
-// Gibt pro Lobby das Ergebnis zurück, damit Aufrufer passende Events senden können.
-async function removePlayerFromAllLobbies(connection, playerId) {
+// Entfernt einen Spieler aus genau einer bestehenden Lobby (falls vorhanden).
+// Gibt null zurück, wenn der Spieler in keiner Lobby war.
+async function removePlayerFromCurrentLobby(connection, playerId) {
     const rows = await dbQuery(
         connection,
-        'SELECT lobby_id FROM Lobby_Player WHERE player_id = ?',
+        'SELECT lobby_id FROM Lobby_Player WHERE player_id = ? LIMIT 1',
         [playerId]
     );
 
-    const results = [];
-    for (const row of rows) {
-        const lobbyId = String(row.lobby_id);
-        const updatedLobby = await removePlayerFromLobby(connection, lobbyId, playerId);
-        results.push({ lobbyId, updatedLobby });
+    if (rows.length === 0) {
+        return null;
     }
 
-    return results;
+    const lobbyId = String(rows[0].lobby_id);
+    const updatedLobby = await removePlayerFromLobby(connection, lobbyId, playerId);
+    return { lobbyId, updatedLobby };
 }
 
 // Löscht eine Lobby und alle zugehörigen Lobby_Player Einträge
@@ -202,7 +201,7 @@ module.exports = {
     getLobby,
     addPlayerToLobby,
     removePlayerFromLobby,
-    removePlayerFromAllLobbies,
+    removePlayerFromCurrentLobby,
     deleteLobby,
     getWaitingLobbies
 };

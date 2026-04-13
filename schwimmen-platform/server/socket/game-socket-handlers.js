@@ -182,15 +182,15 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
-                //Vor dem Beitritt aus evtl. vorhandenen alten Lobbys entfernen.
-                const oldLobbyUpdates = await lobbyStateStore.removePlayerFromAllLobbies(connection, playerId);
-                for (const { lobbyId: oldLobbyId, updatedLobby } of oldLobbyUpdates) {
-                    const oldRoomId = `lobby-${oldLobbyId}`;
+                //Vor dem Beitritt ggf. die bisherige Lobby verlassen (maximal eine).
+                const previousLobby = await lobbyStateStore.removePlayerFromCurrentLobby(connection, playerId);
+                if (previousLobby) {
+                    const oldRoomId = `lobby-${previousLobby.lobbyId}`;
                     socket.leave(oldRoomId);
 
                     //Nur senden, wenn die Lobby nach dem Entfernen noch existiert.
-                    if (updatedLobby) {
-                        io.to(oldRoomId).emit('lobby-updated', getLobbySummary(updatedLobby));
+                    if (previousLobby.updatedLobby) {
+                        io.to(oldRoomId).emit('lobby-updated', getLobbySummary(previousLobby.updatedLobby));
                     }
                 }
 
