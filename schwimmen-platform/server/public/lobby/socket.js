@@ -21,7 +21,7 @@ function registerLobbySocketHandlers(state) {
 
     //TODO: checken was das hier überhaupt genau macht?
     //wenn der Server eine aktualisierte Lobby zurückgibt (z.B. wenn Spieler beitreten oder die Lobby verlassen) 
-    //, wird die aktuelle Lobby aktualisiert und der Status ausgegeben
+    //, wird die aktuelle Lobby aktualisiert
     socket.on('lobby-updated', (lobby) => {
         const myPlayerId = getPlayerId(state);
         if (lobby?.playerIds?.includes(myPlayerId)) {

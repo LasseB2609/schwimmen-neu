@@ -117,7 +117,7 @@ app.get('/', (req, res) => {
     res.redirect('/static/auth/index.html');
 });
 
-//Einfache Health-Route fuer LB-Checks und Demo (zeigt antwortende Instanz)
+//Einfache Health-Route für LB-Checks und Demo (zeigt antwortende Instanz)
 app.get('/health', (req, res) => {
     res.json({
         ok: true,

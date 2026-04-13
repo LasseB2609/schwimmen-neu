@@ -9,9 +9,9 @@ async function loadSessionUser(state) {
         return null;
     }
 
-    //speichert die Session-User-Daten und trägt die playerId in das entsprechende Input-Feld ein
+    //speichert die Session-User-Daten
     const me = await response.json();
-    state.clientPlayerIdEl.value = String(me.playerId);
+    state.myPlayerId = me.playerId;
 
     return me;
 }

@@ -1,5 +1,4 @@
 //Hilfsfunktionen für das Spiel:
-// - toInt: Hilfsfunktion, um einen Wert aus dem Input als Integer zu holen
 // - clearSelection: Funktion, die die aktuelle Kartenauswahl zurücksetzt
 // - isMyTurnInState: Prüft zentral, ob dieser Client gerade Karten auswählen darf.
 // - cardToText: Methode, um eine Karte in ein lesbares Format umzuwandeln (für die Anzeige)
@@ -8,17 +7,10 @@
 // - getOpponentSlots: ordnet Gegner relativ zum eigenen Sitz im Uhrzeigersinn an
 // - renderBoard: Methode, um das gesamte Spielbrett zu rendern
 
-//Hilfsfunktion, um einen Wert aus dem Input als Integer zu holen
-function toInt(value) {
-    return Number.parseInt(value, 10);
-}
-
 //Funktion, die die aktuelle Kartenauswahl zurücksetzt
 function clearSelection(state) {
     state.selectedHandCardId = null;
     state.selectedTableCardIndex = null;
-    state.selectedHandCardIdEl.value = '';
-    state.selectedTableCardIndexEl.value = '';
 }
 
 //Prüft zentral, ob dieser Client gerade Karten auswählen darf.
@@ -28,7 +20,7 @@ function isMyTurnInState(state, gameState) {
     }
 
     const players = Array.isArray(gameState.players) ? gameState.players : [];
-    const myPlayerId = toInt(state.clientPlayerIdEl.value);
+    const myPlayerId = state.myPlayerId;
     const myPlayer = players.find((player) => player.player_id === myPlayerId);
     const currentPlayer = Number.isInteger(gameState.currentPlayerIndex) ? players[gameState.currentPlayerIndex] : null;
 
@@ -155,7 +147,7 @@ function renderBoard(state, gameState) {
     state.lastGameState = gameState;
 
     const players = Array.isArray(gameState.players) ? gameState.players : []; //Spieler
-    const myPlayerId = toInt(state.clientPlayerIdEl.value); //eigene playerId aus dem Input Feld
+    const myPlayerId = state.myPlayerId; //eigene playerId aus dem Session-State
     const myPlayer = players.find((player) => player.player_id === myPlayerId) || null; //eigener Spieler
     const opponentSlots = getOpponentSlots(players, myPlayer); //Sitze der Gegner
     const revealOthers = Boolean(gameState.roundEnded || gameState.status === 'finished' || gameState.lastRoundSummary); //legt fest, ob die Karten der Gegner aufgedeckt werden sollen (z.B. am Ende der Runde oder des Spiels)
@@ -196,7 +188,6 @@ function renderBoard(state, gameState) {
     //überprüft, ob die aktuell ausgewählte Handkarte noch in der Hand ist, falls nicht, wird die Auswahl zurückgesetzt
     if (!handCardIds.has(state.selectedHandCardId)) {
         state.selectedHandCardId = null;
-        state.selectedHandCardIdEl.value = '';
     }
     //für jede Karte der Hand wird ein HTML-Element erstellt, das den Kartentext anzeigt und ggf. anklickbar ist
     for (const card of myHand) {
@@ -206,7 +197,6 @@ function renderBoard(state, gameState) {
             selected: isSelected, //legt fest, ob die Karte als ausgewählt angezeigt wird
             onClick: () => { //beim Klick auf die Karte wird sie ausgewählt oder die Auswahl aufgehoben, und das Board wird neu gerendert, damit die Auswahl sichtbar wird
                 state.selectedHandCardId = state.selectedHandCardId === card.card_id ? null : card.card_id;
-                state.selectedHandCardIdEl.value = state.selectedHandCardId == null ? '' : String(state.selectedHandCardId);
                 renderBoard(state, state.lastGameState);
             }
         }));
@@ -225,7 +215,6 @@ function renderBoard(state, gameState) {
         || !tableCards[state.selectedTableCardIndex]
     ) {
         state.selectedTableCardIndex = null;
-        state.selectedTableCardIndexEl.value = '';
     }
 
     //für jede Karte auf dem Tisch wird ein HTML-Element erstellt, das den Kartentext anzeigt und ggf. anklickbar ist
@@ -236,7 +225,6 @@ function renderBoard(state, gameState) {
             selected: isSelected,
             onClick: () => {
                 state.selectedTableCardIndex = state.selectedTableCardIndex === index ? null : index;
-                state.selectedTableCardIndexEl.value = state.selectedTableCardIndex == null ? '' : String(state.selectedTableCardIndex);
                 renderBoard(state, state.lastGameState);
             }
         }));
@@ -246,7 +234,6 @@ function renderBoard(state, gameState) {
 }
 
 export {
-    toInt,
     clearSelection,
     isMyTurnInState,
     renderBoard

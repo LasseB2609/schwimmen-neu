@@ -104,7 +104,7 @@ async function saveGame(connection, game) {
             game.knockedByPlayerId || null,
             game.roundEnded ? 1 : 0, //wenn game.roundEnded existiert und true ist, übergib 1, ansonsten 0 
             game.passCycleStartPlayerId || null,
-            Number.isInteger(game.consecutivePasses) ? game.consecutivePasses : 0,
+            game.consecutivePasses || 0,
             game.game_id
         ]
     );

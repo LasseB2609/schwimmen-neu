@@ -46,10 +46,6 @@ CREATE TABLE IF NOT EXISTS Game (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
-ALTER TABLE Game ADD COLUMN IF NOT EXISTS pass_cycle_start_player_id INT NULL;
-ALTER TABLE Game ADD COLUMN IF NOT EXISTS consecutive_passes INT DEFAULT 0;
-
 -- ============================================
 -- TABLE: Game_Player (Spieler im Spiel)
 -- ============================================

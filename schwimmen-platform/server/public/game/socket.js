@@ -2,7 +2,7 @@ import { clearSelection, renderBoard } from './helpers.js';
 
 //Funktion, die die Socket.IO Event-Handler für die Spiel-Seite registriert, damit der Client auf Nachrichten vom Server reagieren und entsprechend den Spiel-Status aktualisieren kann
 function registerGameSocketHandlers(state) {
-    const { socket, queryGameId, joinGameIdEl, playGameIdEl } = state;
+    const { socket, queryGameId } = state;
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend
     socket.on('connect', () => {
@@ -12,16 +12,12 @@ function registerGameSocketHandlers(state) {
         }
     });
 
+    //Todo: autoreconnect oder sowas (vermutlich interactionlocked wieder raus)
     socket.on('disconnect', () => {
         state.interactionLocked = true;
     });
 
-    socket.on('game-created', (data) => {
-        joinGameIdEl.value = data.gameId;
-        playGameIdEl.value = data.gameId;
-    });
-
-    //Client empfängt den aktuellen Spielstatus
+    //Client empfängt den aktuellen Spielstatus und rendert das Spielbrett entsprechend
     socket.on('game-state', (gameState) => {
         state.interactionLocked = false;
         state.lastGameState = gameState; //speichert den letzten bekannten Spielstatus, damit bei Auswahländerungen ohne neues Server-Event gerendert werden kann
