@@ -11,6 +11,11 @@ function dealInitialHands() {
             }
         }
     }
+
+    //Live-Score direkt nach dem Austeilen setzen
+    for (const player of this.players) {
+        player.score = this.calculateHandScore(player.hand);
+    }
 }
 
 //Methode, um 3 Karten auf den Tisch zu legen
