@@ -127,11 +127,13 @@ function registerGameSocketHandlers(io, deps) {
     io.on('connection', (socket) => {
         console.log('Socket connected:', socket.id); //Konsolenausgabe der Socket-ID des verbundenen Clients
 
-        //wenn der Client eine "lobby-list" anfragt, wird folgende Funktion ausgeführt
-        socket.on('lobby-list-request', async () => {
-            const lobbies = (await lobbyStateStore.getWaitingLobbies(connection)) //alle wartenden Lobbys aus der DB holen
-                .map(getLobbySummary); //wandelt die Daten der Lobby mit der getLobbySummary Funktion in ein übersichtliches Format um
-            socket.emit('lobby-list', { lobbies });
+        //Neue Verbindungen bekommen die aktuelle Lobby-Liste sofort automatisch
+        lobbyStateStore.getWaitingLobbies(connection)
+            .then((lobbies) => {
+                socket.emit('lobby-list', { lobbies: lobbies.map(getLobbySummary) });
+            })
+            .catch((error) => {
+            console.error('initial lobby-list emit failed:', error);
         });
 
         //wenn der Client eine "lobby-create" Nachricht sendet, wird folgende Funktion ausgeführt

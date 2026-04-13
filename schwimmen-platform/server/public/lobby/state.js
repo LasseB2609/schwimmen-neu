@@ -6,7 +6,6 @@ const lobbyNameInput = document.getElementById('lobbyNameInput');
 const createLobbyButton = document.getElementById('createLobbyButton');
 const joinLobbyIdInput = document.getElementById('joinLobbyIdInput');
 const joinLobbyButton = document.getElementById('joinLobbyButton');
-const refreshLobbiesButton = document.getElementById('refreshLobbiesButton');
 const lobbyList = document.getElementById('lobbyList');
 const currentLobbyOutput = document.getElementById('currentLobbyOutput');
 const startGameButton = document.getElementById('startGameButton');
@@ -21,7 +20,6 @@ function getState() {
         createLobbyButton,
         joinLobbyIdInput,
         joinLobbyButton,
-        refreshLobbiesButton,
         lobbyList,
         currentLobbyOutput,
         startGameButton,

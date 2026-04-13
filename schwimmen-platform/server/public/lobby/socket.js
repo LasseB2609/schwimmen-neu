@@ -9,9 +9,9 @@ function registerLobbySocketHandlers(state) {
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend 
 
-    //wenn der Server connected zurückgibt (also die Verbindung steht), wird die LobbyList angefordert
+    //wenn die Verbindung steht, warten wir auf die vom Server automatisch gesendete Lobby-Liste
     socket.on('connect', () => {
-        socket.emit('lobby-list-request');
+        //kein manueller Request nötig
     });
 
     //wenn der Server die Liste der Lobbys zurückgibt, wird die renderLobbyList Funktion aufgerufen, um die Lobbys anzuzeigen
