@@ -41,9 +41,14 @@ CREATE TABLE IF NOT EXISTS Game (
     current_player_id INT,
     knocked_by_player_id INT NULL,
     round_ended BOOLEAN DEFAULT FALSE,
+    pass_cycle_start_player_id INT NULL,
+    consecutive_passes INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+ALTER TABLE Game ADD COLUMN IF NOT EXISTS pass_cycle_start_player_id INT NULL;
+ALTER TABLE Game ADD COLUMN IF NOT EXISTS consecutive_passes INT DEFAULT 0;
 
 -- ============================================
 -- TABLE: Game_Player (Spieler im Spiel)

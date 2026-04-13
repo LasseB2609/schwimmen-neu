@@ -96,13 +96,15 @@ async function saveGame(connection, game) {
     //evtl TODO = ergebnisse mit try/catch abfangen
     await dbQuery(
         connection,
-        'UPDATE Game SET status = ?, round_number = ?, current_player_id = ?, knocked_by_player_id = ?, round_ended = ? WHERE game_id = ?',
+        'UPDATE Game SET status = ?, round_number = ?, current_player_id = ?, knocked_by_player_id = ?, round_ended = ?, pass_cycle_start_player_id = ?, consecutive_passes = ? WHERE game_id = ?',
         [
             game.status || 'playing',
             game.currentRound || 1, //wenn game.currentRound existiert, übergib es, ansonsten 1 (weil es ja mindestens die erste Runde sein muss)
             currentPlayer ? currentPlayer.player_id : null, //wenn currentPlayer existiert, übergib dessen player_id, ansonsten null
             game.knockedByPlayerId || null,
             game.roundEnded ? 1 : 0, //wenn game.roundEnded existiert und true ist, übergib 1, ansonsten 0 
+            game.passCycleStartPlayerId || null,
+            Number.isInteger(game.consecutivePasses) ? game.consecutivePasses : 0,
             game.game_id
         ]
     );
@@ -172,7 +174,7 @@ async function loadGame(connection, gameId) {
     //lädt die Daten aus der Datenbanktabelle Game, mit game_id, status, round_number und current_player_id
     const gameRows = await dbQuery(
         connection,
-        'SELECT game_id, status, round_number, current_player_id, knocked_by_player_id, round_ended FROM Game WHERE game_id = ? LIMIT 1',
+        'SELECT game_id, status, round_number, current_player_id, knocked_by_player_id, round_ended, pass_cycle_start_player_id, consecutive_passes FROM Game WHERE game_id = ? LIMIT 1',
         [intGameId]
     );
 
@@ -253,6 +255,8 @@ async function loadGame(connection, gameId) {
     game.currentRound = gameRow.round_number || 1; //übergibt die aktuelle Rundennummer an das Game-Objekt, wenn sie in der Datenbankzeile existiert, ansonsten 1
     game.status = gameRow.status || 'playing'; //übergibt den Spielstatus an das Game-Objekt, wenn er in der Datenbankzeile existiert, ansonsten 'playing'
     game.knockedByPlayerId = gameRow.knocked_by_player_id || null; //übergibt die ID des klopfenden Spielers
+    game.passCycleStartPlayerId = gameRow.pass_cycle_start_player_id || null; //Startspieler der aktuellen Pass-Serie wiederherstellen
+    game.consecutivePasses = Number.isInteger(gameRow.consecutive_passes) ? gameRow.consecutive_passes : 0; //Pass-Zähler wiederherstellen
     game.roundEnded = Boolean(gameRow.round_ended); //übergibt, ob die Runde bereits beendet ist
     if (gameRow.current_player_id != null) {
         const currentPlayerIndex = game.getPlayerIndexById(gameRow.current_player_id);

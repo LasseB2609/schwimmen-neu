@@ -183,6 +183,8 @@ function resetForNewRound() {
     //setzt relevante Game-States zurück
     this.tableCards = [];
     this.knockedByPlayerId = null;
+    this.passCycleStartPlayerId = null;
+    this.consecutivePasses = 0;
     this.roundEnded = false;
     this.lastRoundSummary = null;
     this.currentRound += 1;

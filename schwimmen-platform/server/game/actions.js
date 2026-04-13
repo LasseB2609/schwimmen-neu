@@ -44,6 +44,10 @@ function swapCard(player_id, handCardId, tableCardIndex) {
     //Score direkt nach dem Zug aktualisieren, damit der neue Handstand sofort sichtbar ist
     player.score = this.calculateHandScore(player.hand);
 
+    //Eine Pass-Serie wird durch einen Tausch unterbrochen.
+    this.passCycleStartPlayerId = null;
+    this.consecutivePasses = 0;
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -102,6 +106,10 @@ function swapAllCards(player_id) {
     //Score direkt nach dem Zug aktualisieren, damit der neue Handstand sofort sichtbar ist
     player.score = this.calculateHandScore(player.hand);
 
+    //Eine Pass-Serie wird durch einen Tausch unterbrochen.
+    this.passCycleStartPlayerId = null;
+    this.consecutivePasses = 0;
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -141,6 +149,11 @@ function knock(player_id) {
 
 
     this.knockedByPlayerId = player_id;
+
+    //Eine Pass-Serie wird durch Klopfen unterbrochen.
+    this.passCycleStartPlayerId = null;
+    this.consecutivePasses = 0;
+
     const turnInfo = this.advanceTurn(); //nächster Spieler ist dran
 
     return {
@@ -166,12 +179,36 @@ function pass(player_id) {
         throw new Error('Du bist aktuell nicht am Zug.');
     }
 
+    //Startspieler einer neuen Pass-Serie merken.
+    if (this.consecutivePasses === 0 || this.passCycleStartPlayerId == null) {
+        this.passCycleStartPlayerId = player_id;
+    }
+    this.consecutivePasses += 1;
+
     const turnInfo = this.advanceTurn(); //wechselt zum nächsten Spieler
+
+    let tableRefreshedAfterFullPass = false;
+    //Wenn alle Spieler nacheinander gepasst haben und der Zug wieder beim Startspieler der Pass-Serie ist,
+    //werden die 3 Tischkarten verworfen und neu gezogen.
+    if (
+        this.knockedByPlayerId == null
+        && this.consecutivePasses >= this.players.length
+        && turnInfo.nextPlayerId === this.passCycleStartPlayerId
+    ) {
+        this.dealTableCards();
+        tableRefreshedAfterFullPass = true;
+
+        //Neue Serie beginnt erst mit dem nächsten Pass.
+        this.passCycleStartPlayerId = null;
+        this.consecutivePasses = 0;
+    }
+
     return {
         nextPlayerId: turnInfo.nextPlayerId,
         playedBy: player_id,
         knockActive: turnInfo.knockActive,
-        roundShouldEnd: turnInfo.roundShouldEnd
+        roundShouldEnd: turnInfo.roundShouldEnd,
+        tableRefreshedAfterFullPass
     };
 }
 

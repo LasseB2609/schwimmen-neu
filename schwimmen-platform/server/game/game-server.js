@@ -14,6 +14,8 @@ class Game {
         this.currentRound = 1;
         this.currentPlayerIndex = 0;
         this.knockedByPlayerId = null; //speichert wer geklopft hat
+        this.passCycleStartPlayerId = null; //speichert, wer die aktuelle Pass-Serie gestartet hat
+        this.consecutivePasses = 0; //zählt aufeinanderfolgende Pass-Züge
         this.roundEnded = false; //speichert, ob die Runde beendet ist
         this.status = 'playing';
         this.lastRoundSummary = null; //todo: überprüfen, ob überhaupt nötig
