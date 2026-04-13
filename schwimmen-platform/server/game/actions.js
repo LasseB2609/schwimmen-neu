@@ -41,6 +41,9 @@ function swapCard(player_id, handCardId, tableCardIndex) {
     player.hand[handCardPos] = tableCard;
     this.tableCards[tableCardIndex] = handCard;
 
+    //Score direkt nach dem Zug aktualisieren, damit der neue Handstand sofort sichtbar ist
+    player.score = this.calculateHandScore(player.hand);
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -96,6 +99,9 @@ function swapAllCards(player_id) {
         this.tableCards[i] = handCard;
     }
 
+    //Score direkt nach dem Zug aktualisieren, damit der neue Handstand sofort sichtbar ist
+    player.score = this.calculateHandScore(player.hand);
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -132,6 +138,7 @@ function knock(player_id) {
     if (this.currentPlayerIndex !== playerIndex) {
         throw new Error('Du bist aktuell nicht am Zug.');
     }
+
 
     this.knockedByPlayerId = player_id;
     const turnInfo = this.advanceTurn(); //nächster Spieler ist dran
