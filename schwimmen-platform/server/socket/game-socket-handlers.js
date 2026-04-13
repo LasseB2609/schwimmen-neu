@@ -182,6 +182,18 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
+                //Vor dem Beitritt aus evtl. vorhandenen alten Lobbys entfernen.
+                const oldLobbyUpdates = await lobbyStateStore.removePlayerFromAllLobbies(connection, playerId);
+                for (const { lobbyId: oldLobbyId, updatedLobby } of oldLobbyUpdates) {
+                    const oldRoomId = `lobby-${oldLobbyId}`;
+                    socket.leave(oldRoomId);
+
+                    //Nur senden, wenn die Lobby nach dem Entfernen noch existiert.
+                    if (updatedLobby) {
+                        io.to(oldRoomId).emit('lobby-updated', getLobbySummary(updatedLobby));
+                    }
+                }
+
                 await lobbyStateStore.addPlayerToLobby(connection, lobbyId, playerId); //Spieler in der DB zur Lobby hinzufügen
                 socket.join(lobbyRoomId); //Client joint dem Socket.io Raum der Lobby
                 socket.data.lobbyId = lobbyId; //speichert die lobbyId im Socket-Datenobjekt

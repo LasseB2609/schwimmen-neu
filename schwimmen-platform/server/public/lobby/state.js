@@ -4,8 +4,6 @@ const socket = io({ autoConnect: false });
 // holt die HTML-Elemente, die für die Interaktion mit der Seite benötigt werden
 const lobbyNameInput = document.getElementById('lobbyNameInput');
 const createLobbyButton = document.getElementById('createLobbyButton');
-const joinLobbyIdInput = document.getElementById('joinLobbyIdInput');
-const joinLobbyButton = document.getElementById('joinLobbyButton');
 const lobbyList = document.getElementById('lobbyList');
 const currentLobbyOutput = document.getElementById('currentLobbyOutput');
 const startGameButton = document.getElementById('startGameButton');
@@ -18,8 +16,6 @@ function getState() {
         socket,
         lobbyNameInput,
         createLobbyButton,
-        joinLobbyIdInput,
-        joinLobbyButton,
         lobbyList,
         currentLobbyOutput,
         startGameButton,

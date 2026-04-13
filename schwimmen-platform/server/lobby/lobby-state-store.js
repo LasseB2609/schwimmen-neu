@@ -55,7 +55,7 @@ async function getLobby(connection, lobbyId) {
          ORDER BY lp.player_id ASC`,
         [lobbyId]
     );
-
+    //speichert die playerIDs und usernames der Spieler
     const playerIds = new Set(playerRows.map((r) => r.player_id));
     const playerUsernames = playerRows
         .map((r) => r.username)
@@ -98,7 +98,7 @@ async function removePlayerFromLobby(connection, lobbyId, playerId) {
         [lobbyId]
     );
 
-    // Lobby leer → löschen
+    // Lobby leer -> löschen
     if (remaining.length === 0) {
         await deleteLobby(connection, lobbyId);
         return null;
@@ -121,7 +121,27 @@ async function removePlayerFromLobby(connection, lobbyId, playerId) {
         );
     }
 
+    //gibt die aktualisierte Lobby zurück
     return getLobby(connection, lobbyId);
+}
+
+// Entfernt einen Spieler aus allen Lobbys, in denen er aktuell eingetragen ist.
+// Gibt pro Lobby das Ergebnis zurück, damit Aufrufer passende Events senden können.
+async function removePlayerFromAllLobbies(connection, playerId) {
+    const rows = await dbQuery(
+        connection,
+        'SELECT lobby_id FROM Lobby_Player WHERE player_id = ?',
+        [playerId]
+    );
+
+    const results = [];
+    for (const row of rows) {
+        const lobbyId = String(row.lobby_id);
+        const updatedLobby = await removePlayerFromLobby(connection, lobbyId, playerId);
+        results.push({ lobbyId, updatedLobby });
+    }
+
+    return results;
 }
 
 // Löscht eine Lobby und alle zugehörigen Lobby_Player Einträge
@@ -132,6 +152,7 @@ async function deleteLobby(connection, lobbyId) {
 
 // Gibt alle Lobbys mit Status "waiting" zurück (instanzübergreifend aus der DB)
 async function getWaitingLobbies(connection) {
+    //holt alle Lobbys mit Status "waiting"
     const rows = await dbQuery(
         connection,
         `SELECT l.lobby_id, l.lobby_name, l.host_player_id, l.status, p.username AS host_username
@@ -181,6 +202,7 @@ module.exports = {
     getLobby,
     addPlayerToLobby,
     removePlayerFromLobby,
+    removePlayerFromAllLobbies,
     deleteLobby,
     getWaitingLobbies
 };

@@ -7,8 +7,6 @@ function registerLobbyActions(state) {
         socket,
         lobbyNameInput,
         createLobbyButton,
-        joinLobbyIdInput,
-        joinLobbyButton,
         startGameButton,
         leaveLobbyButton,
         logoutButton
@@ -18,12 +16,6 @@ function registerLobbyActions(state) {
     createLobbyButton.addEventListener('click', () => {
         const lobbyName = String(lobbyNameInput.value || '').trim(); //holt den Namen der Lobby aus dem Input-Feld
         socket.emit('lobby-create', { lobbyName }); //schickt die lobby-create Nachricht mit dem Lobby-Namen an den Server
-    });
-
-    //eventlistener für den Knopf zum Beitreten einer Lobby
-    joinLobbyButton.addEventListener('click', () => {
-        const lobbyId = String(joinLobbyIdInput.value || ''); //holt die lobbyId aus dem Input-Feld, in die der Spieler beitreten möchte
-        socket.emit('lobby-join', { lobbyId }); //schickt die lobby-join Nachricht mit der lobbyId an den Server
     });
 
     //eventlistener für den Knopf zum Starten des Spiels in der Lobby

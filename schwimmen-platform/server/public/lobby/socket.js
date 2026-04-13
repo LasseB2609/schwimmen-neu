@@ -2,14 +2,12 @@ import { getPlayerId, setCurrentLobby, renderLobbyList } from './helpers.js';
 
 //Funktion, die die Socket.IO Event-Handler für die Lobby-Seite registriert, damit der Client auf Nachrichten vom Server reagieren und entsprechend den Lobby-Status aktualisieren kann
 function registerLobbySocketHandlers(state) {
-    const {
-        socket,
-        joinLobbyIdInput
-    } = state;
+    const { socket } = state;
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend 
 
-    //wenn die Verbindung steht, warten wir auf die vom Server automatisch gesendete Lobby-Liste
+    //wenn die Verbindung steht, wird die vom Server automatisch gesendete Lobby-Liste empfangen
+    //todo: brauchen wir des hier? nochmal checken
     socket.on('connect', () => {
         //kein manueller Request nötig
     });
@@ -26,7 +24,6 @@ function registerLobbySocketHandlers(state) {
         const myPlayerId = getPlayerId(state);
         if (lobby?.playerIds?.includes(myPlayerId)) {
             setCurrentLobby(state, lobby);
-            joinLobbyIdInput.value = lobby.lobbyId;
         } else {
             setCurrentLobby(state, null);
         }
