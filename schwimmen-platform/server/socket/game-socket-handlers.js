@@ -32,7 +32,9 @@ function registerGameSocketHandlers(io, deps) {
             lobbyId: lobby.lobbyId,
             lobbyName: lobby.lobbyName,
             hostPlayerId: lobby.hostPlayerId,
+            hostUsername: lobby.hostUsername || null,
             playerIds: Array.from(lobby.playerIds),
+            playerUsernames: Array.isArray(lobby.playerUsernames) ? lobby.playerUsernames : [],
             status: lobby.status
         };
     }

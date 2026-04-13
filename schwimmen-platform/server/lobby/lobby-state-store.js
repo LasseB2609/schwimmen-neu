@@ -26,36 +26,48 @@ async function createLobby(connection, hostPlayerId, lobbyName) {
         [lobbyId, hostPlayerId]
     );
 
-    return {
-        lobbyId,
-        lobbyName,
-        hostPlayerId,
-        playerIds: new Set([hostPlayerId]),
-        status: 'waiting'
-    };
+    // gibt die Lobby zurück
+    return await getLobby(connection, lobbyId);
 }
 
 // Holt eine Lobby aus der DB anhand der ID. Gibt null zurück, wenn sie nicht existiert.
 async function getLobby(connection, lobbyId) {
+    //holt die LobbyDaten
     const rows = await dbQuery(
         connection,
-        'SELECT lobby_id, lobby_name, host_player_id, status FROM Lobby WHERE lobby_id = ? LIMIT 1',
+        `SELECT l.lobby_id, l.lobby_name, l.host_player_id, l.status, p.username AS host_username
+         FROM Lobby l
+         LEFT JOIN Player p ON p.player_id = l.host_player_id
+         WHERE l.lobby_id = ?
+         LIMIT 1`,
         [lobbyId]
     );
     if (rows.length === 0) return null;
 
+    //holt die Spieler, die in der Lobby sind
     const row = rows[0];
     const playerRows = await dbQuery(
         connection,
-        'SELECT player_id FROM Lobby_Player WHERE lobby_id = ?',
+        `SELECT lp.player_id, p.username
+         FROM Lobby_Player lp
+         LEFT JOIN Player p ON p.player_id = lp.player_id
+         WHERE lp.lobby_id = ?
+         ORDER BY lp.player_id ASC`,
         [lobbyId]
     );
+
+    const playerIds = new Set(playerRows.map((r) => r.player_id));
+    const playerUsernames = playerRows
+        .map((r) => r.username)
+        .filter(Boolean);
 
     return {
         lobbyId: String(row.lobby_id),
         lobbyName: row.lobby_name,
         hostPlayerId: row.host_player_id,
-        playerIds: new Set(playerRows.map((r) => r.player_id)),
+        hostUsername: row.host_username || null,
+        playerIds,
+        playerUsernames,
         status: row.status
     };
 }
@@ -122,7 +134,10 @@ async function deleteLobby(connection, lobbyId) {
 async function getWaitingLobbies(connection) {
     const rows = await dbQuery(
         connection,
-        'SELECT lobby_id, lobby_name, host_player_id, status FROM Lobby WHERE status = ?',
+        `SELECT l.lobby_id, l.lobby_name, l.host_player_id, l.status, p.username AS host_username
+         FROM Lobby l
+         LEFT JOIN Player p ON p.player_id = l.host_player_id
+         WHERE l.status = ?`,
         ['waiting']
     );
     if (rows.length === 0) return [];
@@ -131,22 +146,32 @@ async function getWaitingLobbies(connection) {
     const lobbyIds = rows.map((r) => r.lobby_id);
     const playerRows = await dbQuery(
         connection,
-        'SELECT lobby_id, player_id FROM Lobby_Player WHERE lobby_id IN (?)',
+        `SELECT lp.lobby_id, lp.player_id, p.username
+         FROM Lobby_Player lp
+         LEFT JOIN Player p ON p.player_id = lp.player_id
+         WHERE lp.lobby_id IN (?)
+         ORDER BY lp.lobby_id ASC, lp.player_id ASC`,
         [lobbyIds]
     );
 
-    // playerRows nach lobby_id gruppieren (damitnicht für jede Lobby eine separate DB-Abfrage nötig ist) und in Sets umwandeln
+    // playerRows nach lobby_id gruppieren (damit nicht für jede Lobby eine separate DB-Abfrage nötig ist)
     const playersByLobby = {};
+    const usernamesByLobby = {};
     for (const pr of playerRows) {
         if (!playersByLobby[pr.lobby_id]) playersByLobby[pr.lobby_id] = new Set();
         playersByLobby[pr.lobby_id].add(pr.player_id);
+
+        if (!usernamesByLobby[pr.lobby_id]) usernamesByLobby[pr.lobby_id] = [];
+        if (pr.username) usernamesByLobby[pr.lobby_id].push(pr.username);
     }
 
     return rows.map((row) => ({
         lobbyId: String(row.lobby_id),
         lobbyName: row.lobby_name,
         hostPlayerId: row.host_player_id,
+        hostUsername: row.host_username || null,
         playerIds: playersByLobby[row.lobby_id] || new Set(),
+        playerUsernames: usernamesByLobby[row.lobby_id] || [],
         status: row.status
     }));
 }

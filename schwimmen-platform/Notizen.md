@@ -14,11 +14,9 @@ ToDos:
     - Kommentare überprüfen (z.B. bei "Funktionen" in server.js)
     - nochmal nachsehen, wo es noch Sinn macht try/catch blöcke hinzuzüfgen. oder generell alle weglassen?
     - in jeder datei nach "TODO" suchen
-    - Status Ausgaben für das Debuggen wieder entfernen (überall) und auch andere debugging sachen raus
     - Überprüfungen/Validierungen bei den Spielregeln, ob überhaupt 3 Karten etc. nötig sind - wieder entfernen vllt?
     - es können aktuell (02.04) noch Games erstellt werden, auch wenn eine Fehlermeldung kommt, dass die gegebenen Spieler nicht existieren
     - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den händen/auf dem tisch liegen müssen
-    - toInt Methode checken
     - Regeln einbauen, falls der Stapel leer ist
     - bei Spielende zurück in die Lobby
     -mehrere Server und Lastverteilung (für Lobby und Spiel)
@@ -35,6 +33,10 @@ ToDos:
     -evtl dateien umbenennen (vllt deutlicher machen, was für client und was für server wichtig ist)
     - check ob wir leastconn brauchen
     -generell cleanup
+    - lobbylist aktualisieren button entfernen (weil wird doch eh aktualisiert oder?)
+    - cleanere looks (wer ist dran wer hat geklopft etc, lobby design)
+    - nur eine lobby erstellen können
+    - lobby löschen wenn spieler disconnected oder so
 
 
 Warum Socket.io:

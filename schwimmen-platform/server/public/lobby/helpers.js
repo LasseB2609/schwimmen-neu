@@ -2,6 +2,36 @@
 // - getPlayerId: liest die playerId aus den Session-User-Daten und gibt sie als Integer zurück
 // - setCurrentLobby: setzt die aktuelle Lobby im State
 // - renderLobbyList: rendert die Liste der Lobbys, die übergeben wird, in der Lobby-Seite
+// - formatCurrentLobbyText: formatiert die Informationen der aktuellen Lobby als Text, um sie anzuzeigen
+
+//Formatiert die Informationen der aktuellen Lobby als Text, um sie anzuzeigen
+function formatCurrentLobbyText(lobby) {
+    if (!lobby) { //falls keine Lobby ausgewählt ist, passende Nachricht anzeigen
+        return 'Noch keiner Lobby beigetreten.';
+    }
+
+    //speichert den Namen des Hosts und die Namen der anderen Spieler in der Lobby, um sie anzuzeigen
+    const hostName = lobby.hostUsername || `Player ${lobby.hostPlayerId}`;
+    const allPlayers = Array.isArray(lobby.playerUsernames) ? lobby.playerUsernames : [];
+    const otherPlayers = allPlayers.filter((name) => name && name !== lobby.hostUsername);
+
+    //Formatiert die Informationen
+    const lines = [
+        `Lobby: ${lobby.lobbyName} (#${lobby.lobbyId})`,
+        `Host: ${hostName}`
+    ];
+
+    if (otherPlayers.length === 0) {
+        lines.push('Mitspieler: -');
+    } else {
+        lines.push('Mitspieler:');
+        for (const playerName of otherPlayers) {
+            lines.push(`- ${playerName}`);
+        }
+    }
+
+    return lines.join('\n'); //gibt die formatierten Informationen zurück
+}
 
 //Hilfsfunktion, um die playerId aus dem Input als Integer zu holen
 function getPlayerId(state) {
@@ -11,6 +41,7 @@ function getPlayerId(state) {
 //setzt die aktuelle Lobby im State
 function setCurrentLobby(state, lobby) {
     state.currentLobby = lobby || null;
+    state.currentLobbyOutput.textContent = formatCurrentLobbyText(state.currentLobby);
 }
 
 //rendert die Liste der Lobbys, die übergeben wird
@@ -31,9 +62,13 @@ function renderLobbyList(state, lobbies) {
         const item = document.createElement('li');
         item.className = 'list-group-item d-flex justify-content-between align-items-center';
 
-        //nennt die Lobby-Id, den Namen der Lobby, die Id des Hosts(todo: besser den Namen oder?) und die Anzahl der Spieler in der Lobby
+        //nennt die Lobby-Id, den Namen der Lobby, den Host und die Anzahl der Spieler in der Lobby
         const text = document.createElement('span');
-        text.textContent = `#${lobby.lobbyId} ${lobby.lobbyName} | Host: ${lobby.hostPlayerId} | Spieler: ${lobby.playerIds.length}`;
+        const hostName = lobby.hostUsername || `Player ${lobby.hostPlayerId}`;
+        const playerCount = Array.isArray(lobby.playerUsernames)
+            ? lobby.playerUsernames.length
+            : 0;
+        text.textContent = `#${lobby.lobbyId} ${lobby.lobbyName} | Host: ${hostName} | Spieler: ${playerCount}`;
 
         //Button zum BEitreten der Lobby
         const button = document.createElement('button');

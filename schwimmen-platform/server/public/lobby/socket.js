@@ -27,6 +27,8 @@ function registerLobbySocketHandlers(state) {
         if (lobby?.playerIds?.includes(myPlayerId)) {
             setCurrentLobby(state, lobby);
             joinLobbyIdInput.value = lobby.lobbyId;
+        } else {
+            setCurrentLobby(state, null);
         }
     });
 
