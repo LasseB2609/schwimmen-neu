@@ -1,4 +1,4 @@
-import { setStatus, getPlayerId, setCurrentLobby, renderLobbyList } from './helpers.js';
+import { getPlayerId, setCurrentLobby, renderLobbyList } from './helpers.js';
 
 //Funktion, die die Socket.IO Event-Handler für die Lobby-Seite registriert, damit der Client auf Nachrichten vom Server reagieren und entsprechend den Lobby-Status aktualisieren kann
 function registerLobbySocketHandlers(state) {
@@ -11,7 +11,6 @@ function registerLobbySocketHandlers(state) {
 
     //wenn der Server connected zurückgibt (also die Verbindung steht), wird die LobbyList angefordert
     socket.on('connect', () => {
-        setStatus(state, 'Socket verbunden.', { socketId: socket.id });
         socket.emit('lobby-list-request');
     });
 
@@ -29,19 +28,16 @@ function registerLobbySocketHandlers(state) {
             setCurrentLobby(state, lobby);
             joinLobbyIdInput.value = lobby.lobbyId;
         }
-        setStatus(state, 'Lobby aktualisiert.', lobby);
     });
 
     //wenn der Server zurückgibt, dass das Spiel in der Lobby gestartet wurde, wird der Client zur game.html weitergeleitet mit der gameId und playerId als Query-Parameter
     socket.on('lobby-game-started', (data) => {
         const playerId = getPlayerId(state);
-        setStatus(state, 'Spiel wurde gestartet. Weiterleitung ...', data);
         window.location.href = `/static/game/game.html?gameId=${encodeURIComponent(data.gameId)}&playerId=${encodeURIComponent(playerId)}`;
     });
 
-    //wenn der Server zurückgibt, dass die Lobby verlassen wurde, wird die der Status ausgegeben und die error Nachricht ausgegeben
     socket.on('game-error', (error) => {
-        setStatus(state, 'Serverfehler empfangen.', error);
+        console.error('Serverfehler empfangen:', error);
     });
 }
 

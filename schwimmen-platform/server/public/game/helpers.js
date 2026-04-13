@@ -1,6 +1,4 @@
 //Hilfsfunktionen für das Spiel:
-// - setStatus: gibt den Status aus (zum debuggen)
-// - setGameState: gibt den aktuellen Spielstatus aus (zum debuggen)
 // - toInt: Hilfsfunktion, um einen Wert aus dem Input als Integer zu holen
 // - clearSelection: Funktion, die die aktuelle Kartenauswahl zurücksetzt
 // - isMyTurnInState: Prüft zentral, ob dieser Client gerade Karten auswählen darf.
@@ -9,21 +7,6 @@
 // - renderOpponent: Methode, um die Informationen und Karten eines Gegners zu rendern
 // - getOpponentSlots: ordnet Gegner relativ zum eigenen Sitz im Uhrzeigersinn an
 // - renderBoard: Methode, um das gesamte Spielbrett zu rendern
-
-
-
-
-//gibt den Status aus (zum debuggen)
-function setStatus(state, message, payload) {
-    state.statusOutput.textContent = payload
-        ? `${message}\n\n${JSON.stringify(payload, null, 2)}`
-        : message;
-}
-
-//gibt den aktuellen Spielstatus aus (zum debuggen)
-function setGameState(state, gameState) {
-    state.stateOutput.textContent = JSON.stringify(gameState, null, 2);
-}
 
 //Hilfsfunktion, um einen Wert aus dem Input als Integer zu holen
 function toInt(value) {
@@ -263,8 +246,6 @@ function renderBoard(state, gameState) {
 }
 
 export {
-    setStatus,
-    setGameState,
     toInt,
     clearSelection,
     isMyTurnInState,

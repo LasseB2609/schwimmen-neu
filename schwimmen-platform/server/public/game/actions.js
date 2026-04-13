@@ -1,4 +1,4 @@
-import { setStatus, toInt, isMyTurnInState } from './helpers.js';
+import { toInt, isMyTurnInState } from './helpers.js';
 
 //Funktion, die die Event-Listener für die Buttons und andere interaktive Elemente auf der Spiel-Seite registriert,
 // damit bei Interaktionen die entsprechenden Nachrichten an den Server gesendet werden
@@ -22,7 +22,6 @@ function registerGameActions(state) {
     createGameButton.addEventListener('click', () => {
         const playerIds = [toInt(player1El.value), toInt(player2El.value)].filter(Number.isInteger);
         const payload = { playerIds };
-        setStatus(state, 'Sende create-game ...', payload);
         socket.emit('create-game', payload);
     });
 
@@ -30,7 +29,6 @@ function registerGameActions(state) {
     joinGameButton.addEventListener('click', () => {
         const gameId = toInt(joinGameIdEl.value);
         const payload = { gameId };
-        setStatus(state, 'Sende join-game ...', payload);
         socket.emit('join-game', payload);
     });
 
@@ -45,12 +43,10 @@ function registerGameActions(state) {
             ? players[currentIndex].player_id
             : null;
         if (currentPlayerId !== playerId) {
-            setStatus(state, 'Du bist aktuell nicht am Zug.');
             return;
         }
 
         if (!Number.isInteger(state.selectedHandCardId) || !Number.isInteger(state.selectedTableCardIndex)) {
-            setStatus(state, 'Bitte zuerst eine eigene Karte und eine Tischkarte auswählen.');
             return;
         }
 
@@ -61,7 +57,6 @@ function registerGameActions(state) {
             tableCardIndex: state.selectedTableCardIndex
         };
 
-        setStatus(state, 'Sende swap-card ...', payload);
         socket.emit('swap-card', payload);
     });
 
@@ -72,12 +67,10 @@ function registerGameActions(state) {
 
         //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
         if (!isMyTurnInState(state, state.lastGameState)) {
-            setStatus(state, 'Du bist aktuell nicht am Zug.');
             return;
         }
 
         const payload = { gameId, playerId };
-        setStatus(state, 'Sende swap-all-cards ...', payload);
         socket.emit('swap-all-cards', payload);
     });
 
@@ -88,12 +81,10 @@ function registerGameActions(state) {
 
         //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
         if (!isMyTurnInState(state, state.lastGameState)) {
-            setStatus(state, 'Du bist aktuell nicht am Zug.');
             return;
         }
 
         const payload = { gameId, playerId };
-        setStatus(state, 'Sende knock ...', payload);
         socket.emit('knock', payload);
     });
 
@@ -104,12 +95,10 @@ function registerGameActions(state) {
 
         //prüft, ob der Spieler am Zug ist, bevor die Aktion gesendet wird
         if (!isMyTurnInState(state, state.lastGameState)) {
-            setStatus(state, 'Du bist aktuell nicht am Zug.');
             return;
         }
 
         const payload = { gameId, playerId };
-        setStatus(state, 'Sende pass ...', payload);
         socket.emit('pass', payload);
     });
 }

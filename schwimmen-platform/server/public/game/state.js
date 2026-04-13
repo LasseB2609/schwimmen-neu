@@ -19,8 +19,6 @@ const playGameIdEl = document.getElementById('playGameId');
 const clientPlayerIdEl = document.getElementById('clientPlayerId');
 const selectedHandCardIdEl = document.getElementById('selectedHandCardId');
 const selectedTableCardIndexEl = document.getElementById('selectedTableCardIndex');
-const statusOutput = document.getElementById('statusOutput');
-const stateOutput = document.getElementById('stateOutput');
 
 //html Elemente für Spielinformationen
 const roundValue = document.getElementById('roundValue');
@@ -67,8 +65,6 @@ function getState() {
         clientPlayerIdEl,
         selectedHandCardIdEl,
         selectedTableCardIndexEl,
-        statusOutput,
-        stateOutput,
         roundValue,
         turnInfo,
         myScoreValue,

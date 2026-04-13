@@ -11,7 +11,6 @@ const lobbyList = document.getElementById('lobbyList');
 const currentLobbyOutput = document.getElementById('currentLobbyOutput');
 const startGameButton = document.getElementById('startGameButton');
 const leaveLobbyButton = document.getElementById('leaveLobbyButton');
-const statusOutput = document.getElementById('statusOutput');
 const logoutButton = document.getElementById('logoutButton');
 const sessionUsername = document.getElementById('sessionUsername');
 
@@ -27,7 +26,6 @@ function getState() {
         currentLobbyOutput,
         startGameButton,
         leaveLobbyButton,
-        statusOutput,
         logoutButton,
         sessionUsername,
         currentLobby: null,
