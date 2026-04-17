@@ -1,8 +1,7 @@
 # Schwimmen Neu
 
-Dieses Repository enthält ein verteiltes Mehrspieler-Kartenspiel für Schwimmen. Der Schwerpunkt liegt nicht nur auf der Spiellogik selbst, sondern auf einem Setup, das typische Bausteine verteilter Webanwendungen zusammenführt: mehrere Node.js-Instanzen, ein vorgeschalteter Nginx-Load-Balancer, Redis für Sessions und Socket-Synchronisation sowie MySQL beziehungsweise MariaDB als persistente Datenbasis.
+Dieses Repository enthält ein verteiltes Mehrspieler-Kartenspiel für Schwimmen.
 
-Der eigentliche Anwendungscode liegt im Unterordner `schwimmen-platform`. Die Root-Ebene dieses Repositories dient vor allem als Einstiegspunkt für Dokumentation, organisatorische Dateien und Installationshinweise.
 
 ## Ziel des Projekts
 
@@ -239,7 +238,7 @@ Unterteilung:
 - `public/game/`: Spiel-Frontend
 - `public/css/`: Stylesheets für Auth, Lobby und Spiel
 
-Die Frontend-Struktur ist modular aufgebaut. Typisch sind getrennte Dateien für:
+Weiter aufgeteilt ist das Frontend mit folgenden Dateien:
 
 - `init.js`: Initialisierung des jeweiligen Bereichs
 - `state.js`: lokaler Client-State
