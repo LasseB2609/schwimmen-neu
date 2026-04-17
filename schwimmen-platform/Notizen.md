@@ -5,28 +5,15 @@ vor der Abgabe noch folgendes machen:
 
 
 
-damit Projekt funktioniert:
-    - einmal node.js installieren aus dem internet
-    - dann im Terminal in den ordner node-client-server-extended-with-database-nodemon/server wechseln
-    - Befehl "npm install" ausführen
-
 ToDos:
-    - Kommentare überprüfen (z.B. bei "Funktionen" in server.js)
-    - nochmal nachsehen, wo es noch Sinn macht try/catch blöcke hinzuzüfgen. oder generell alle weglassen?
-    - in jeder datei nach "TODO" suchen
-    - Überprüfungen/Validierungen bei den Spielregeln, ob überhaupt 3 Karten etc. nötig sind - wieder entfernen vllt?
-    - filter(boolean) entfernen, da nach den regeln eh immer 3 karten in den händen/auf dem tisch liegen müssen
+   - Kommentare überprüfen
     - Regeln einbauen, falls der Stapel leer ist
-    -mehrere Server und Lastverteilung (für Lobby und Spiel)
-    -> dann auch dieses reverseproxy
     - weniger Kommentare
     - überprüfen, ob wir noch caching brauchen, da aktuell alles immer aus der db geholt wird
     - was machen wenn client disconnected?
-    - locks oder Transactions oder so hinzufügen
-    -evtl dateien umbenennen (vllt deutlicher machen, was für client und was für server wichtig ist)
     - check ob wir leastconn brauchen
-    -generell cleanup
-    - überprüfen, ob das kartendeck nach jeder runde wirklich zurückgesetzt wird
+    - autoreconnects?
+    - eigene Lobby haben und dann selbst beitreten verhindern
 
 
 
