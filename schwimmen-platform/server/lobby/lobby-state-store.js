@@ -128,16 +128,19 @@ async function removePlayerFromLobby(connection, lobbyId, playerId) {
 // Entfernt einen Spieler aus genau einer bestehenden Lobby (falls vorhanden).
 // Gibt null zurück, wenn der Spieler in keiner Lobby war.
 async function removePlayerFromCurrentLobby(connection, playerId) {
+    //sucht Lobby, in der der Spieler ist
     const rows = await dbQuery(
         connection,
         'SELECT lobby_id FROM Lobby_Player WHERE player_id = ? LIMIT 1',
         [playerId]
     );
 
+    //falls er in keiner Lobby ist, wird null zurückgegeben
     if (rows.length === 0) {
         return null;
     }
 
+    //entfernt den Spieler aus der gefundenen Lobby und gibt die aktualisierte Lobby zurück
     const lobbyId = String(rows[0].lobby_id);
     const updatedLobby = await removePlayerFromLobby(connection, lobbyId, playerId);
     return { lobbyId, updatedLobby };

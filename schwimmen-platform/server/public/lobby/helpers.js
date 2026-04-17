@@ -67,7 +67,7 @@ function renderLobbyList(state, lobbies) {
         const hostName = lobby.hostUsername || `Player ${lobby.hostPlayerId}`;
         const playerCount = Array.isArray(lobby.playerUsernames)
             ? lobby.playerUsernames.length
-            : 0;
+            : 0; //Anzahl der Spieler in der Lobby
         text.textContent = `#${lobby.lobbyId} ${lobby.lobbyName} | Host: ${hostName} | Spieler: ${playerCount}`;
 
         //Button zum BEitreten der Lobby
