@@ -29,18 +29,22 @@ function stopRoundEndCountdown(state) {
     }
 }
 
-//startet einen
+//startet einen Countdown zum Rundenende, wenn die Karten aufgedeckt werden und zeigt eine entsprechende Nachricht an
 function startRoundEndCountdown(state, totalMs) {
-    stopRoundEndCountdown(state);
+    stopRoundEndCountdown(state); //beendet ggf. einen bestehenden Countdown, um Überlappungen zu verhindern
 
+    //wenn keine gültige Zeit angegeben ist, wird direkt eine Nachricht ohne Countdown angezeigt
     if (!Number.isFinite(totalMs) || totalMs <= 0) {
         showEventMessage(state, 'Runde beendet. Leben werden abgezogen.', 3000);
         return;
     }
 
+    //setzt die verbleibende Zeit auf die nächste volle Sekunde hoch, damit die Anzeige nicht zu schnell von 1s auf 0s springt
     let secondsLeft = Math.max(1, Math.ceil(totalMs / 1000));
+    //gibt die initiale Nachricht mit der verbleibenden Zeit aus
     showEventMessage(state, `Runde beendet. Leben werden abgezogen. Neue Runde in ${secondsLeft}s.`, 0);
 
+    //setzt ein Intervall, das jede Sekunde die verbleibende Zeit aktualisiert und nach Ablauf der Zeit die Nachricht ausblendet
     state.roundEndCountdownIntervalId = setInterval(() => {
         secondsLeft -= 1;
         if (secondsLeft <= 0) {
@@ -71,11 +75,6 @@ function getWinnerText(gameState, winnerPlayerIds) {
 //Funktion, die nach Spielende eine Nachricht anzeigt und nach einer kurzen Verzögerung zurück zur Lobby leitet
 function startGameFinishRedirect(state, winnerText) {
     stopRoundEndCountdown(state);
-
-    if (state.gameFinishRedirectIntervalId) {
-        clearInterval(state.gameFinishRedirectIntervalId);
-        state.gameFinishRedirectIntervalId = null;
-    }
 
     let secondsLeft = 10;
     showEventMessage(state, `${winnerText} Weiterleitung zur Lobby in ${secondsLeft}s.`, 0);
