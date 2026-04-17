@@ -11,6 +11,7 @@ class Game {
         this.players = players; // Array von Spielern
         this.deck = deck;       // Deck-Objekt
         this.tableCards = [];   // Array für die Tischkarten
+        this.discardPile = [];  // Karten, die in der Runde vom Tisch verworfen wurden
         this.currentRound = 1;
         this.currentPlayerIndex = 0;
         this.knockedByPlayerId = null; //speichert wer geklopft hat

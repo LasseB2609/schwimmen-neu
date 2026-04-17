@@ -43,9 +43,9 @@ function cardToText(card) {
     //Maps für die Farbe und den Wert der Karten
     const rankMap = {
         A: 'Ass',
-        K: 'Koenig',
-        Q: 'Dame',
-        J: 'Bube'
+        K: 'König',
+        D: 'Dame',
+        B: 'Bube'
     };
     const suitMap = {
         Herz: 'Herz',

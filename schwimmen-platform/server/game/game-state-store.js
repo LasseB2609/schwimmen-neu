@@ -128,6 +128,7 @@ async function saveGame(connection, game) {
     //speichert die aktuellen Karten des Nachziehstapels in der Datenbank-Tabelle Game_Card
     let deckPos = 0;
     for (const card of game.deck.cards) { //iteriert durch die Karten des Nachziehstapels und speichert sie in der DB
+        if (!card) continue;
         await dbQuery(
             connection,
             'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
@@ -156,6 +157,18 @@ async function saveGame(connection, game) {
             connection,
             'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
             [game.game_id, card.card_id, 'table', null, tablePos++]
+        );
+    }
+
+    //speichert die in der Runde verworfenen Tischkarten (discards)
+    const discardCards = Array.isArray(game.discardPile) ? game.discardPile : [];
+    let discardPos = 0;
+    for (const card of discardCards) {
+        if (!card) continue;
+        await dbQuery(
+            connection,
+            'INSERT INTO Game_Card (game_id, card_id, location, owner_player_id, position) VALUES (?, ?, ?, ?, ?)',
+            [game.game_id, card.card_id, 'discard', null, discardPos++]
         );
     }
 
@@ -220,6 +233,7 @@ async function loadGame(connection, gameId) {
 
     const deckCards = [];
     const tableCards = [];
+    const discardCards = [];
     const handFromPlayers = new Map(); // bestehend aus Schlüssel = player_id und Wert = Array der Handkarten des Spielers
 
     //läuft durch die Datenbankzeilen der Karten und sortiert sie nach der location(Deck, Tisch, Hand) und speichert sie entsprechend ab
@@ -238,6 +252,12 @@ async function loadGame(connection, gameId) {
             continue; //zum nächsten Durchlauf der Schleife springen
         }
 
+        //Discardkarten
+        if (row.location === 'discard') {
+            discardCards[row.position] = card;
+            continue;
+        }
+
         //Handkarten
         if (row.location === 'hand' && row.owner_player_id != null) {
             if (!handFromPlayers.has(row.owner_player_id)) { //überprüft, ob für den Spieler bereits ein Eintrag in der handFromPlayers Map existiert, wenn nicht, wird ein neuer Eintrag mit einem leeren Array erstellt
@@ -252,6 +272,7 @@ async function loadGame(connection, gameId) {
     const deck = new Deck(deckCards); //erstellt ein Deck-Objekt mit den Karten des Nachziehstapels
     const game = new Game(intGameId, players, deck); //erstellt ein Game-Objekt mit der gameId, den Spielern und dem Deck
     game.tableCards = tableCards; //übergibt die Tischkarten an das Game-Objekt
+    game.discardPile = discardCards.filter(Boolean); //übergibt verworfene Tischkarten an das Game-Objekt
     game.currentRound = gameRow.round_number || 1; //übergibt die aktuelle Rundennummer an das Game-Objekt, wenn sie in der Datenbankzeile existiert, ansonsten 1
     game.status = gameRow.status || 'playing'; //übergibt den Spielstatus an das Game-Objekt, wenn er in der Datenbankzeile existiert, ansonsten 'playing'
     game.knockedByPlayerId = gameRow.knocked_by_player_id || null; //übergibt die ID des klopfenden Spielers

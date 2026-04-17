@@ -20,6 +20,15 @@ function dealInitialHands() {
 
 //Methode, um 3 Karten auf den Tisch zu legen
 function dealTableCards() {
+    //Vorherige Tischkarten dieser Runde in den Ablagestapel verschieben.
+    const currentTableCards = Array.isArray(this.tableCards) ? this.tableCards.filter(Boolean) : [];
+    if (!Array.isArray(this.discardPile)) {
+        this.discardPile = [];
+    }
+    if (currentTableCards.length > 0) {
+        this.discardPile.push(...currentTableCards);
+    }
+
     this.tableCards = [
         this.deck.draw(),
         this.deck.draw(),
@@ -168,9 +177,10 @@ function resetForNewRound() {
     //alle bisher verwendeten Karten wieder ins Deck einsammeln
     const collectedCards = [
         ...this.deck.cards, //die restlichen Karten im Deck
+        ...(Array.isArray(this.discardPile) ? this.discardPile : []), //verworfene Tischkarten
         ...this.tableCards, //die Karten auf dem Tisch
         ...this.players.flatMap((player) => player.hand) //die Karten der Spieler, reduziert auf ein Array 
-    ];
+    ].filter(Boolean);
 
     this.deck.cards = collectedCards;
     this.deck.shuffle(); //mische das Kartendeck
@@ -182,6 +192,7 @@ function resetForNewRound() {
 
     //setzt relevante Game-States zurück
     this.tableCards = [];
+    this.discardPile = [];
     this.knockedByPlayerId = null;
     this.passCycleStartPlayerId = null;
     this.consecutivePasses = 0;
