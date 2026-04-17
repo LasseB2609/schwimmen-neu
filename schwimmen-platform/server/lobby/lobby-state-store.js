@@ -30,6 +30,21 @@ async function createLobby(connection, hostPlayerId, lobbyName) {
     return await getLobby(connection, lobbyId);
 }
 
+// Sucht eine wartende Lobby, die vom gegebenen Spieler gehostet wird.
+async function getWaitingLobbyByHost(connection, hostPlayerId) {
+    const rows = await dbQuery(
+        connection,
+        'SELECT lobby_id FROM Lobby WHERE host_player_id = ? AND status = ? LIMIT 1',
+        [hostPlayerId, 'waiting']
+    );
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return await getLobby(connection, rows[0].lobby_id);
+}
+
 // Holt eine Lobby aus der DB anhand der ID. Gibt null zurück, wenn sie nicht existiert.
 async function getLobby(connection, lobbyId) {
     //holt die LobbyDaten
@@ -201,6 +216,7 @@ async function getWaitingLobbies(connection) {
 
 module.exports = {
     createLobby,
+    getWaitingLobbyByHost,
     getLobby,
     addPlayerToLobby,
     removePlayerFromLobby,

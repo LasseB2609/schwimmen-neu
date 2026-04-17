@@ -148,6 +148,18 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
+                //Ein Host darf maximal eine wartende Lobby gleichzeitig haben.
+                const existingLobby = await lobbyStateStore.getWaitingLobbyByHost(connection, playerId);
+                if (existingLobby) {
+                    socket.emit('game-error', {
+                        message: `Du hast bereits eine offene Lobby (#${existingLobby.lobbyId}).`
+                    });
+                    socket.join(`lobby-${existingLobby.lobbyId}`);
+                    socket.data.lobbyId = existingLobby.lobbyId;
+                    socket.emit('lobby-updated', getLobbySummary(existingLobby));
+                    return;
+                }
+
                 const lobby = await lobbyStateStore.createLobby(connection, playerId, lobbyName); //Lobby in der DB erstellen
                 const lobbyRoomId = `lobby-${lobby.lobbyId}`; //erstellt eine eindeutige RaumId für jede Lobby (basierend auf der LobbyId)
 
