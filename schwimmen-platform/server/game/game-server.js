@@ -19,7 +19,7 @@ class Game {
         this.consecutivePasses = 0; //zählt aufeinanderfolgende Pass-Züge
         this.roundEnded = false; //speichert, ob die Runde beendet ist
         this.status = 'playing';
-        this.lastRoundSummary = null; //todo: überprüfen, ob überhaupt nötig
+        this.lastRoundSummary = null;
     }
 }
 

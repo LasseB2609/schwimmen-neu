@@ -230,7 +230,7 @@ function renderBoard(state, gameState) {
         }));
     });
 
-    state.deckPile.textContent = 'Deck'; //TODO: Deck als Stapel mit Rückseite rendern (aktuell nur Text mit "Deck")
+    state.deckPile.textContent = 'Deck';
 }
 
 export {

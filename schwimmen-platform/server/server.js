@@ -99,7 +99,7 @@ const limiter = rateLimit({
 // Apply limiter to all routes.
 app.use(limiter);
 
-// Promise-Helfer für SQL-Abfragen (todo: evtl. mit anderem dbquery zusammenlegen)
+// Promise-Helfer für SQL-Abfragen
 function dbQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (error, results) => {

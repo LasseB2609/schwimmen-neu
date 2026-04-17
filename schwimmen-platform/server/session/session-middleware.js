@@ -19,7 +19,7 @@ function createSessionMiddleware(options) {
         cookie: {
             httpOnly: true, //Cookies sind nicht durch JavaScript im browser auslesbar
             sameSite: 'lax', //Cookies werden bei Anfragen von anderen Seiten nicht gesendet, außer bei Navigationen (z.B. Link-Klicks), um CSRF-Angriffe zu erschweren
-            secure: secureCookie, //Cookie darf auch über http gesendet werden (todo: überprüfen ob vor Abgabe noch geändert werden sollte)
+            secure: secureCookie, //Cookie darf auch über http gesendet werden
             maxAge: sessionCookieMaxAgeMs //Ablaufzeit (12h)
         } //konfiguriert die Eigenschaften der Session-Cookies
     };

@@ -93,7 +93,7 @@ async function createGame(connection, player_ids) {
 async function saveGame(connection, game) {
     //Spielstatus wird in der Datenbank-Tabelle Game aktualisiert
     const currentPlayer = game.players[game.currentPlayerIndex] || null; //holt den aktuellen Spieler basierend auf currentPlayerIndex, falls es keinen gibt  wird null übergeben
-    //evtl TODO = ergebnisse mit try/catch abfangen
+    
     await dbQuery(
         connection,
         'UPDATE Game SET status = ?, round_number = ?, current_player_id = ?, knocked_by_player_id = ?, round_ended = ?, pass_cycle_start_player_id = ?, consecutive_passes = ? WHERE game_id = ?',

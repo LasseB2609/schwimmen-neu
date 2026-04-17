@@ -290,7 +290,6 @@ function registerGameSocketHandlers(io, deps) {
         socket.on('create-game', async (data) => {
             try {
                 //data könnte entweder ein Array von playerIds sein oder ein Objekt mit einem playerIds-Array
-                //todo: überlegen, was wirklich übergeben wird und nicht benötigtes entfernen
                 const playerIds = Array.isArray(data)
                     ? data // Wenn data direkt ein Array ist, verwenden wir es
                     : Array.isArray(data?.playerIds) // Wenn data ein Objekt mit einem playerIds-Array ist, verwenden wir dieses Array
@@ -480,7 +479,6 @@ function registerGameSocketHandlers(io, deps) {
         });
 
         //wenn der Client sich trennt, wird dies in der Konsole ausgegeben
-        //todo: evtl spieler aus dem Spiel entfernen oder ähnliches
         socket.on('disconnect', () => {
             console.log('Socket disconnected:', socket.id);
         });

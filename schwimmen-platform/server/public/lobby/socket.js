@@ -6,18 +6,11 @@ function registerLobbySocketHandlers(state) {
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend 
 
-    //wenn die Verbindung steht, wird die vom Server automatisch gesendete Lobby-Liste empfangen
-    //todo: brauchen wir des hier? nochmal checken
-    socket.on('connect', () => {
-        //kein manueller Request nötig
-    });
-
     //wenn der Server die Liste der Lobbys zurückgibt, wird die renderLobbyList Funktion aufgerufen, um die Lobbys anzuzeigen
     socket.on('lobby-list', (data) => {
         renderLobbyList(state, data?.lobbies || []);
     });
 
-    //TODO: checken was das hier überhaupt genau macht?
     //wenn der Server eine aktualisierte Lobby zurückgibt (z.B. wenn Spieler beitreten oder die Lobby verlassen) 
     //, wird die aktuelle Lobby aktualisiert
     socket.on('lobby-updated', (lobby) => {

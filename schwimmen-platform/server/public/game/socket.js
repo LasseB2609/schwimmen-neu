@@ -19,7 +19,7 @@ function registerGameSocketHandlers(state) {
         }
     });
 
-    //Todo: autoreconnect oder sowas (vermutlich interactionlocked wieder raus)
+    //Client empfängt Nachricht, dass die Verbindung zum Server getrennt wurde
     socket.on('disconnect', () => {
         state.interactionLocked = true;
         showEventMessage(state, 'Verbindung getrennt. Reconnect läuft ...', 0);

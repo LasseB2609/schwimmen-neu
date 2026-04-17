@@ -5,9 +5,8 @@ function dealInitialHands() {
             const card = this.deck.draw();
             if (card) {
                 player.addCard(card);
-            } else {
+            } else { //sollte nicht eintreten, da zuvor erst das Deck aufgefüllt wird
                 console.log("Keine Karten mehr im Deck zum Austeilen!");
-                //TODO: hier noch abfangen, dass Spiel dann beendet werden sollte oder ähnliches
             }
         }
     }
@@ -200,8 +199,7 @@ function resetForNewRound() {
     this.lastRoundSummary = null;
     this.currentRound += 1;
 
-    //aktiver Spieler bleibt am Tischindex stehen (der naechste Zug startet von dort)
-    //TODO: Eine Start new Round methode?
+    //teilt neue Karten aus (alter aktueller Spieler bleibt gleich)
     this.dealInitialHands();
     const roundEndsImmediately = this.checkForImmediateRoundEndOnDeal();
     if (!roundEndsImmediately) {
