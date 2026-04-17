@@ -21,12 +21,6 @@ function swapCard(player_id, handCardId, tableCardIndex) {
         throw new Error('Ungültiger tableCardIndex (erlaubt: 0 bis 2).');
     }
 
-    //überprüfen, ob an dem angegebenen Tischkartenindex tatsächlich eine Karte liegt
-    //todo: ist das hier überhaupt nötig?
-    if (!this.tableCards[tableCardIndex]) {
-        throw new Error('An dieser Tischposition liegt keine Karte.');
-    }
-
     const player = this.players[playerIndex];
     const tableCard = this.tableCards[tableCardIndex];
     const handCardPos = player.hand.findIndex((card) => card.card_id === handCardId); //sucht die Karte in der Hand des Spielers und speichert den Index ab
@@ -48,6 +42,7 @@ function swapCard(player_id, handCardId, tableCardIndex) {
     this.passCycleStartPlayerId = null;
     this.consecutivePasses = 0;
 
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -66,7 +61,6 @@ function swapCard(player_id, handCardId, tableCardIndex) {
     };
 }
 
-//new
 //Methode, um alle Handkarten mit den Tischkarten zu tauschen 
 function swapAllCards(player_id) {
     this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
@@ -83,13 +77,11 @@ function swapAllCards(player_id) {
     }
 
     //überprüfen, ob 3 Tischkarten liegen
-    //todo: überhaupt nötig?
     if (this.tableCards.length !== 3) {
         throw new Error('Es müssen 3 Karten auf dem Tisch liegen, um alle Karten zu tauschen.');
     }
 
     //überprüfen, ob der Spieler tatsächlich 3 Karten auf der Hand hat
-    //todo: überhaupt nötig?
     if (player.hand.length !== 3) {
         throw new Error('Der Spieler muss 3 Karten auf der Hand haben, um alle Karten zu tauschen.');
     }
@@ -110,6 +102,7 @@ function swapAllCards(player_id) {
     this.passCycleStartPlayerId = null;
     this.consecutivePasses = 0;
 
+
     //Bei 31 oder Feuer wird sofort aufgedeckt und die Runde direkt beendet.
     if (this.hasImmediateRoundEndHand(player)) {
         return this.endRoundImmediately();
@@ -125,7 +118,6 @@ function swapAllCards(player_id) {
 }
 
 //MEthode, um zu klopfen, d.h. dass in dieser Runde jeder weitere Spieler nur noch einen Zug machen darf
-//TODO: es darf nicht in der ersten Runde geklopft werden
 function knock(player_id) {
     this.assertRoundNotEnded(); //fängt hier ab, falls die Runde bereits beendet ist
 
@@ -136,13 +128,11 @@ function knock(player_id) {
     const playerIndex = this.getPlayerIndexById(player_id);
 
     //überprüfen, ob der Spieler im Spiel ist
-    //todo: überhaupt nötig?
     if (playerIndex === -1) {
         throw new Error('Spieler nicht im Spiel gefunden.');
     }
 
     //überprüfen, ob der Spieler an der Reihe ist
-    //todo: überhaupt nötig? oder evlt knopf irgendwie solange ausgrauen lassen oder so
     if (this.currentPlayerIndex !== playerIndex) {
         throw new Error('Du bist aktuell nicht am Zug.');
     }
@@ -201,6 +191,11 @@ function pass(player_id) {
         //Neue Serie beginnt erst mit dem nächsten Pass.
         this.passCycleStartPlayerId = null;
         this.consecutivePasses = 0;
+    }
+
+    //Wenn Nachziehstapel leer: Runde sofort beenden
+    if (this.deck.cards.length === 0) {
+        return this.endRoundImmediately();
     }
 
     return {
