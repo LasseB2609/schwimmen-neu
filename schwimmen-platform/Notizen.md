@@ -33,10 +33,9 @@ ToDos:
     -evtl dateien umbenennen (vllt deutlicher machen, was für client und was für server wichtig ist)
     - check ob wir leastconn brauchen
     -generell cleanup
-    - lobbylist aktualisieren button entfernen (weil wird doch eh aktualisiert oder?)
     - cleanere looks (wer ist dran wer hat geklopft etc, lobby design)
     - nur eine lobby erstellen können
-    - lobby löschen wenn spieler disconnected oder so
+    - evtl. timer pro spielzug?
 
 
 Warum Socket.io:
