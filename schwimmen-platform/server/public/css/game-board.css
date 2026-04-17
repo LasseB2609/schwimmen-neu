@@ -41,6 +41,23 @@ body {
     font-size: 14px;
 }
 
+.event-message {
+    position: absolute;
+    top: 62px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    min-width: 320px;
+    max-width: 78vw;
+    text-align: center;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(9, 30, 19, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f6f7f6;
+    font-size: 14px;
+}
+
 .player-zone {
     position: absolute;
     z-index: 5;

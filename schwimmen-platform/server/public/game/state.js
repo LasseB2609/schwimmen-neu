@@ -16,6 +16,7 @@ const roundValue = document.getElementById('roundValue');
 const turnInfo = document.getElementById('turnInfo');
 const myScoreValue = document.getElementById('myScoreValue');
 const ownPlayerLabel = document.getElementById('ownPlayerLabel');
+const eventMessage = document.getElementById('eventMessage');
 
 //html Elemente für die eigenen Karten, die Karten auf dem Tisch und den Ablagestapel
 const ownCardsContainer = document.getElementById('ownCardsContainer');
@@ -44,6 +45,7 @@ function getState() {
         turnInfo,
         myScoreValue,
         ownPlayerLabel,
+        eventMessage,
         ownCardsContainer,
         tableCardsContainer,
         deckPile,
@@ -60,7 +62,10 @@ function getState() {
         selectedTableCardIndex: null,
         lastGameState: null,
         lastCurrentPlayerId: null,
-        interactionLocked: false
+        interactionLocked: false,
+        eventMessageTimeoutId: null,
+        roundEndCountdownIntervalId: null,
+        gameFinishRedirectIntervalId: null
     };
 }
 

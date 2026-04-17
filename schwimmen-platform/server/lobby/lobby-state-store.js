@@ -30,7 +30,7 @@ async function createLobby(connection, hostPlayerId, lobbyName) {
     return await getLobby(connection, lobbyId);
 }
 
-// Sucht eine wartende Lobby, die vom gegebenen Spieler gehostet wird.
+// Sucht eine wartende Lobby, die vom gegebenen Spieler gehostet wird
 async function getWaitingLobbyByHost(connection, hostPlayerId) {
     const rows = await dbQuery(
         connection,

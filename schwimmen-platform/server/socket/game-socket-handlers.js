@@ -69,6 +69,7 @@ function registerGameSocketHandlers(io, deps) {
         io.to(roomId).emit('round-ended', {
             reason: 'knock-cycle-complete',
             knockedByPlayerId: game.knockedByPlayerId,
+            nextRoundStartsInMs: roundSummary.gameIsOver ? null : ROUND_END_BUFFER_MS,
             roundSummary
         });
 
@@ -105,6 +106,7 @@ function registerGameSocketHandlers(io, deps) {
             await gameState.saveGame(connection, game); //speichert das Spiel mit der sofortigen Rundenbeendigung in der Datenbank
             io.to(roomId).emit('round-ended', {
                 reason: 'immediate-round-end-on-deal',
+                nextRoundStartsInMs: immediateRoundSummary.gameIsOver ? null : ROUND_END_BUFFER_MS,
                 roundSummary: immediateRoundSummary
             }); //informt die Clients über die sofortige Rundenbeendigung
 
@@ -148,7 +150,7 @@ function registerGameSocketHandlers(io, deps) {
                     return;
                 }
 
-                //Ein Host darf maximal eine wartende Lobby gleichzeitig haben.
+                //Ein Host darf maximal eine wartende Lobby gleichzeitig haben
                 const existingLobby = await lobbyStateStore.getWaitingLobbyByHost(connection, playerId);
                 if (existingLobby) {
                     socket.emit('game-error', {
@@ -358,11 +360,17 @@ function registerGameSocketHandlers(io, deps) {
 
                 //führt die Spiellogik aus (tauscht Handkarte gegen Tischkarte)
                 const actionResult = game.swapCard(playerId, handCardId, tableCardIndex);
+                const actingPlayer = game.players.find((player) => player.player_id === playerId) || null;
 
                 //speichert den aktualisierten Spielzustand in der Datenbank
                 await gameState.saveGame(connection, game);
 
                 //sendet den aktualisierten Spielstatus an alle Clients im Spielraum
+                io.to(roomId).emit('game-action', {
+                    type: 'swap-card',
+                    playerId,
+                    username: actingPlayer ? actingPlayer.username : null
+                });
                 io.to(roomId).emit('game-state', getGameState(game));
                 await finalizeRoundIfNeeded(game, roomId, actionResult);
             } catch (error) {
@@ -391,8 +399,14 @@ function registerGameSocketHandlers(io, deps) {
                 }
 
                 const actionResult = game.swapAllCards(playerId); //tauscht alle Handkarten mit den Tischkarten
+                const actingPlayer = game.players.find((player) => player.player_id === playerId) || null;
                 await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
                 //sendet den aktualisierten Spielstatus an die Clients im Spielraum
+                io.to(roomId).emit('game-action', {
+                    type: 'swap-all-cards',
+                    playerId,
+                    username: actingPlayer ? actingPlayer.username : null
+                });
                 io.to(roomId).emit('game-state', getGameState(game)); 
                 await finalizeRoundIfNeeded(game, roomId, actionResult);
             } catch (error) { //Fehlerbehandlung
@@ -417,7 +431,13 @@ function registerGameSocketHandlers(io, deps) {
 
                 
                 const actionResult = game.knock(playerId);//führt die Spiellogik für das Klopfen aus
+                const actingPlayer = game.players.find((player) => player.player_id === playerId) || null;
                 await gameState.saveGame(connection, game);//speichert den aktualisierten Spielzustand in der Datenbank
+                io.to(roomId).emit('game-action', {
+                    type: 'knock',
+                    playerId,
+                    username: actingPlayer ? actingPlayer.username : null
+                });
                 io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
                 await finalizeRoundIfNeeded(game, roomId, actionResult);
             } catch (error) { //Fehlerbehandlung
@@ -444,7 +464,13 @@ function registerGameSocketHandlers(io, deps) {
                 }
 
                 const actionResult = game.pass(playerId); //führt die Spiellogik für das Passen aus)
+                const actingPlayer = game.players.find((player) => player.player_id === playerId) || null;
                 await gameState.saveGame(connection, game); //speichert den aktualisierten Spielzustand in der Datenbank
+                io.to(roomId).emit('game-action', {
+                    type: 'pass',
+                    playerId,
+                    username: actingPlayer ? actingPlayer.username : null
+                });
                 io.to(roomId).emit('game-state', getGameState(game)); //sendet den aktualisierten Spielstatus an die Clients
                 await finalizeRoundIfNeeded(game, roomId, actionResult);
             } catch (error) { //Fehlerbehandlung
