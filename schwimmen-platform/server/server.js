@@ -69,7 +69,7 @@ const HOST = '0.0.0.0';
 const SERVER_INSTANCE = process.env.SERVER_INSTANCE || 'server-1';
 const ROUND_END_BUFFER_MS = 8000; //8 Sekunden Zeit, um die aufgedeckten Karten anzuzeigen
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-change-me'; //setzt den geheimen Schlüssel für die Session Cookies ("dev-only-change-me" ist ein Fallback)
-const SESSION_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 12; //legt fest, wie lange der Session-Cookie gültig bleibt (hier 12h)
+const SESSION_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 12; //legt fest, wie lange der Session-Cookie gültig bleibt (12h)
 const scryptAsync = promisify(crypto.scrypt); //macht Passwort-Hashing(crypto.scrypt) einfacher mit await
 
 // 3) App- und Socket-Server erstellen
