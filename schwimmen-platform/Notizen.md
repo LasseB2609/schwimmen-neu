@@ -1,5 +1,3 @@
-INFO: aktuell noch Fehler im code
-
 vor der Abgabe noch folgendes machen:
     -  Nodemon wieder entfernen (in Dockerfile und in der yaml, siehe sein Repo)
 
@@ -7,13 +5,10 @@ vor der Abgabe noch folgendes machen:
 
 ToDos:
    - Kommentare überprüfen
-    - Regeln einbauen, falls der Stapel leer ist
     - weniger Kommentare
-    - überprüfen, ob wir noch caching brauchen, da aktuell alles immer aus der db geholt wird
     - was machen wenn client disconnected?
     - check ob wir leastconn brauchen
     - autoreconnects?
-    - eigene Lobby haben und dann selbst beitreten verhindern
 
 
 
