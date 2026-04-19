@@ -12,7 +12,24 @@ function registerGameSocketHandlers(state) {
     const { socket, queryGameId } = state;
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend
-    socket.on('connect', () => {
+
+    // Nach jedem erfolgreichen (Re-)Connect: Server-Instanz abfragen und in Konsole ausgeben
+    socket.on('connect', async () => {
+        // Reconnect-Hinweis im UI zurücksetzen
+        if (typeof showEventMessage === 'function') {
+            showEventMessage(state, '', 0);
+        }
+        try {
+            const res = await fetch('/health');
+            if (res.ok) {
+                const info = await res.json();
+                console.info(`[Game] Verbunden mit Server-Instanz: ${info.serverInstance}`);
+            } else {
+                console.warn('[Game] /health-Check fehlgeschlagen');
+            }
+        } catch (e) {
+            console.warn('[Game] /health-Check Fehler:', e);
+        }
         //wenn gameId über Query-Parameter übergeben wurde, direkt dem Spiel beitreten
         if (Number.isInteger(queryGameId)) {
             socket.emit('join-game', { gameId: queryGameId });

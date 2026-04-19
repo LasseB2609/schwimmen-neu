@@ -74,6 +74,8 @@ const scryptAsync = promisify(crypto.scrypt); //macht Passwort-Hashing(crypto.sc
 
 // 3) App- und Socket-Server erstellen
 const app = express();
+// Vertraue dem ersten Proxy (Nginx) für X-Forwarded-For, damit express-rate-limit korrekt funktioniert
+app.set('trust proxy', 1);
 const server = http.createServer(app); // aus der Express App wird ein HTTP Server erstellt, damit Socket.IO damit arbeiten kann
 const io = new Server(server); // erstellt eine neue Socket.IO-Instanz und bindet sie an den HTTP-Server
 // Features for JSON Body
