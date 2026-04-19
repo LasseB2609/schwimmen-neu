@@ -46,10 +46,17 @@ async function createGame(connection, player_ids) {
 
         //fügt den Spieler mit dem Spiel in die Game_Player Tabelle ein
         //zu Beginn mit 3 Leben und einem Score von 0. is_active wird auf false gesetzt
+        // Score: 0 (Standard), bei Drilling 30.5, bei Feuer NULL
+        let initialScore = 0;
+        if (player.score === 'Feuer') {
+            initialScore = null;
+        } else if (typeof player.score === 'number') {
+            initialScore = player.score;
+        }
         await dbQuery(
             connection,
             'INSERT INTO Game_Player (game_id, player_id, is_active, lives, score, seat_index) VALUES (?, ?, ?, ?, ?, ?)',
-            [gameId, player.player_id, true, 3, 0, seatIndex]
+            [gameId, player.player_id, true, 3, initialScore, seatIndex]
         );
 
         seatIndex += 1;
@@ -111,10 +118,16 @@ async function saveGame(connection, game) {
 
     //Spielerstatus (mit Leben, Score und Aktivitätsstatus) wird in der Datenbank-Tabelle Game_Player aktualisiert
     for (const player of game.players) {
+        let scoreToSave = 0;
+        if (player.score === 'Feuer') {
+            scoreToSave = null;
+        } else if (typeof player.score === 'number') {
+            scoreToSave = player.score;
+        }
         await dbQuery(
             connection,
             'UPDATE Game_Player SET lives = ?, score = ?, is_active = ?, seat_index = ? WHERE game_id = ? AND player_id = ?',
-            [player.lives, player.score || 0, true, player.seatIndex ?? 0, game.game_id, player.player_id]
+            [player.lives, scoreToSave, true, player.seatIndex ?? 0, game.game_id, player.player_id]
         );
     }
 
@@ -215,7 +228,11 @@ async function loadGame(connection, gameId) {
         const player = new Player(row.player_id, row.username);
         player.seatIndex = Number.isInteger(row.seat_index) ? row.seat_index : 0;
         player.lives = row.lives;
-        player.score = row.score || 0;
+        if (row.score === null) {
+            player.score = 'Feuer';
+        } else {
+            player.score = row.score;
+        }
         return player;
     });
 

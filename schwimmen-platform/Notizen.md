@@ -4,11 +4,8 @@ vor der Abgabe noch folgendes machen:
 
 
 ToDos:
-   - Kommentare überprüfen
-    - weniger Kommentare
-    - was machen wenn client disconnected?
-    - check ob wir leastconn brauchen
-    - autoreconnects?
+-Reconnect Handling überprüfen (besonders lobby)
+
 
 
 

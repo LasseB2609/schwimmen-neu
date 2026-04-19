@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS Game_Player (
     socket_id VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     lives INT DEFAULT 3,
-    score INT DEFAULT 0
+    score DECIMAL(4,1) DEFAULT 0
 );
 
 -- ============================================
