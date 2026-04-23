@@ -32,9 +32,19 @@ function registerLobbySocketHandlers(state) {
 
     //folgende Socket.IO Event-Handler(des Clients) warten auf Nachrichten vom Server und reagieren entsprechend 
 
-    //wenn der Server die Liste der Lobbys zurückgibt, wird die renderLobbyList Funktion aufgerufen, um die Lobbys anzuzeigen
+    //wenn der Server die Liste der Lobbys zurückgibt, 
+    // wird die renderLobbyList Funktion aufgerufen, um die Lobbys anzuzeigen
+    // zusätzlich wird geprüft, ob der Spieler bereits in einer der Lobbys ist, 
+    // um die aktuelle Lobby entsprechend zu aktualisieren
     socket.on('lobby-list', (data) => {
         renderLobbyList(state, data?.lobbies || []);
+
+        //Prüfen ob der Spieler bereits in einer der Lobbys ist und dementsprechend Aktuelle Lobby aktualisieren
+        const myPlayerId = getPlayerId(state);
+        const myLobby = (data?.lobbies || []).find(
+            (lobby) => Array.isArray(lobby.playerIds) && lobby.playerIds.includes(myPlayerId)
+        );
+        setCurrentLobby(state, myLobby || null);
     });
 
     //wenn der Server eine aktualisierte Lobby zurückgibt (z.B. wenn Spieler beitreten oder die Lobby verlassen) 
