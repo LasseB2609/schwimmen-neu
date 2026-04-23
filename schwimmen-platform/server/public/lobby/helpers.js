@@ -58,42 +58,48 @@ function renderLobbyList(state, lobbies) {
     }
 
     //iteriert durch die gegebenen Lobbys und erstellt für jede Lobby ein html-Element in der Liste mit den entsprechenden Informationen und einem Button zum Beitreten
-        const myPlayerId = getPlayerId(state);
-        for (const lobby of lobbies) {
-            const item = document.createElement('li');
-            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+    const myPlayerId = getPlayerId(state);
+    for (const lobby of lobbies) {
+        const item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
 
-            //nennt die Lobby-Id, den Namen der Lobby, den Host und die Anzahl der Spieler in der Lobby
-            const text = document.createElement('span');
-            const hostName = lobby.hostUsername || `Player ${lobby.hostPlayerId}`;
-            const playerCount = Array.isArray(lobby.playerUsernames)
-                ? lobby.playerUsernames.length
-                : 0; //Anzahl der Spieler in der Lobby
-            text.textContent = `#${lobby.lobbyId} ${lobby.lobbyName} | Host: ${hostName} | Spieler: ${playerCount}`;
+        //nennt die Lobby-Id, den Namen der Lobby, den Host und die Anzahl der Spieler in der Lobby
+        const text = document.createElement('span');
+        const hostName = lobby.hostUsername || `Player ${lobby.hostPlayerId}`;
+        const playerCount = Array.isArray(lobby.playerUsernames)
+            ? lobby.playerUsernames.length
+            : 0; //Anzahl der Spieler in der Lobby
+        text.textContent = `#${lobby.lobbyId} ${lobby.lobbyName} | Host: ${hostName} | Spieler: ${playerCount}`;
 
-            //Button zum Beitreten der Lobby
-            const button = document.createElement('button');
-            button.className = 'btn btn-sm btn-outline-primary';
-            button.textContent = 'Beitreten';
+        //Button zum Beitreten der Lobby
+        const button = document.createElement('button');
+        button.className = 'btn btn-sm btn-outline-primary';
+        button.textContent = 'Beitreten';
 
-            // Spieler ist bereits Mitglied dieser Lobby
-            const isMember = Array.isArray(lobby.playerIds) && lobby.playerIds.includes(myPlayerId);
-            if (isMember) { //Button wird nicht angezeigt
-                button.disabled = true;
-                button.classList.add('btn-secondary');
-                button.classList.remove('btn-outline-primary');
-                button.textContent = (myPlayerId === lobby.hostPlayerId) ? 'Eigene Lobby' : 'Bereits beigetreten';
-            } else { //Button wird angezeigt
-                button.addEventListener('click', () => {
-                    state.socket.emit('lobby-join', { lobbyId: lobby.lobbyId }); //schickt beim click die lobby-join Nachricht an den Server
-                });
-            }
-
-            //fügt die html-Elemente zusammen und hängt sie an die Liste der Lobbys an
-            item.appendChild(text);
-            item.appendChild(button);
-            state.lobbyList.appendChild(item);
+        // Spieler ist bereits Mitglied dieser Lobby, oder die Lobby ist voll
+        const isMember = Array.isArray(lobby.playerIds) && lobby.playerIds.includes(myPlayerId);
+        const isFull = Array.isArray(lobby.playerIds) && lobby.playerIds.length >= 4;
+        if (isMember) { //Button wird disabled
+            button.disabled = true;
+            button.classList.add('btn-secondary');
+            button.classList.remove('btn-outline-primary');
+            button.textContent = (myPlayerId === lobby.hostPlayerId) ? 'Eigene Lobby' : 'Bereits beigetreten';
+        } else if (isFull) { //Button wird disabled
+            button.disabled = true;
+            button.classList.add('btn-secondary');
+            button.classList.remove('btn-outline-primary');
+            button.textContent = 'Lobby voll';
+        } else { //Button wird angezeigt
+            button.addEventListener('click', () => {
+                state.socket.emit('lobby-join', { lobbyId: lobby.lobbyId }); //schickt beim click die lobby-join Nachricht an den Server
+            });
         }
+
+        //fügt die html-Elemente zusammen und hängt sie an die Liste der Lobbys an
+        item.appendChild(text);
+        item.appendChild(button);
+        state.lobbyList.appendChild(item);
+    }
 }
 
 export {
