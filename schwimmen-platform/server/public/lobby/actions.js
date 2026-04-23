@@ -37,6 +37,11 @@ function registerLobbyActions(state) {
 
     //eventlistener für den Logout-Knopf
     logoutButton.addEventListener('click', async () => {
+        // Falls in einer Lobby: erst verlassen
+        if (state.currentLobby) {
+            socket.emit('lobby-leave', { lobbyId: state.currentLobby.lobbyId });
+            setCurrentLobby(state, null);
+        }
         await fetch('/auth/logout', { method: 'POST' });
         window.location.href = '/static/auth/index.html'; //Weiterleitung an index.html
     });
